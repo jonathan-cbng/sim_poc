@@ -1,0 +1,57 @@
+[tool.ruff]
+    line-length = 120
+    src = ["core"]
+    target-version = "py311"
+
+[tool.ruff.lint]
+    # Import order: known_first_party = core
+    select = [
+        "E",   # pycodestyle errors
+        "W",   # pycodestyle warnings
+        "F",   # pyflakes
+        "I",   # isort (sort imports automatically)
+        "N",   # pep8-naming
+        "UP",  # pyupgrade (warn about outdated syntax)
+        "B",   # flake8-bugbear
+        "C4",  # flake8-comprehensions
+        "SIM", # flake8-simplify
+        "ISC", # flake8-implicit-str-concat
+        "PL",  # pylint
+        "FAST" # FastAPI
+    ]
+    ignore = [
+        # global-statement
+        # Disabling this allows use of global statements to update variables
+        "PLW0603",
+        # too-many-arguments
+        # Disabling this allows functions with many arguments (by default 5, this can be configured with lint.pylint.max-args)
+        "PLR0913",
+        # too-many-public-methods
+        # Disabling this allows classes with many public methods (by default 20, this can be configured with lint.pylint.max-public-methods)
+        "PLR0904",
+        # too-many-statements
+        # Disabling this allows functions with many statements (by default 50, this can be configured with lint.pylint.max-statements)
+        "PLR0915",
+        # too-many-branches (NMS-1888)
+        # Disabling this allows functions with many branches (by default 12, this can be configured with lint.pylint.max-branches)
+        "PLR0912",
+        # invalid-class-name (NMS-1889)
+        # Disabling this allows class names which do not follow the CapsWords convention
+        "N801",
+        # function-call-in-default-argument (NMS-1890)
+        # This throws warnings for function arguments like "token_payload: dict = Depends(get_jwt_payload)"
+        "B008",
+        # unused-import
+        # Disabling this allows unused imports; some imports, although not explicitly used, are required
+        "F401",
+        # invalid-function-name
+        # Disabling this allows function names which aren't fully lowercase (ie anything involving 'AP' or 'RT')
+        "N802",
+        # invalid-argument-name
+        # Exact same as invalid-function-name, but for arguments
+        "N803",
+    ]
+
+[tool.ruff.lint.isort]
+    known-first-party = ["cbng"] # cbng packages should be grouped together
+    known-local-folder = ["core"]
