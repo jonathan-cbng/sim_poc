@@ -6,7 +6,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:1
     - AP_ID=1
-    - NUM_RTS=500
+    - NUM_RTS=100
     networks:
       apnet1:
         ipv4_address: 10.1.0.2
@@ -24,7 +24,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:2
     - AP_ID=2
-    - NUM_RTS=500
+    - NUM_RTS=100
     networks:
       apnet2:
         ipv4_address: 10.2.0.2
@@ -42,7 +42,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:3
     - AP_ID=3
-    - NUM_RTS=500
+    - NUM_RTS=100
     networks:
       apnet3:
         ipv4_address: 10.3.0.2
@@ -60,7 +60,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:4
     - AP_ID=4
-    - NUM_RTS=500
+    - NUM_RTS=100
     networks:
       apnet4:
         ipv4_address: 10.4.0.2
@@ -78,7 +78,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:5
     - AP_ID=5
-    - NUM_RTS=500
+    - NUM_RTS=100
     networks:
       apnet5:
         ipv4_address: 10.5.0.2

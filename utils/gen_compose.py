@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 
 NUM_APS = 5
-NUM_RTS = 500
+NUM_RTS = 100
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
 BASE_IPV6 = "2001:db8:abcd:{}::1:1"
