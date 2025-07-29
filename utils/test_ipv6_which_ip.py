@@ -15,6 +15,8 @@ logging.basicConfig(
 logger = logging.getLogger("test_ipv6_which_ip")
 
 IPV6_PREFIX = "2001:db8:abcd"
+NUM_APS = 5
+NUM_RTS = 500
 
 
 async def check_which_ip(ipv6_addr: str, port: int = 8000, timeout: float = 2.0) -> bool:
@@ -45,16 +47,20 @@ async def main(num_aps: int, num_rts: int):
     ap_success = sum(ap_results)
     logger.info(f"{ap_success}/{num_aps} AP addresses responded to /which_ip")
 
-    # Then check RT addresses
-    rt_tasks = []
+    # Then check RT addresses, grouped by AP
+    rt_success = 0
     for i in range(1, num_aps + 1):
-        base_subnet = f"{IPV6_PREFIX}:{i}"
+        base_subnet = f"{IPV6_PREFIX}:{i}::2"
+        rt_tasks = []
         for rt_id in range(1, num_rts + 1):
-            rt_addr = f"{base_subnet}::2:{rt_id:x}"
+            rt_addr = f"{base_subnet}:{rt_id:x}"
             rt_tasks.append(check_which_ip(rt_addr))
-    rt_results = await asyncio.gather(*rt_tasks)
-    rt_success = sum(rt_results)
-    logger.info(f"{rt_success}/{num_aps * num_rts} RT addresses responded to /which_ip")
+        results = await asyncio.gather(*rt_tasks)
+        ap_rt_success = sum(results)
+        rt_success += ap_rt_success
+        logger.info(
+            f"AP {i} ({base_subnet}:1..{num_rts + 1}): {ap_rt_success}/{num_rts} RT addresses responded to /which_ip"
+        )
 
     num_total = num_aps + num_aps * num_rts
     success = ap_success + rt_success
@@ -71,14 +77,14 @@ if __name__ == "__main__":
         "-a",
         "--num_aps",
         type=int,
-        default=2,
+        default=NUM_APS,
         help="Number of Access Points (APs) to check.",
     )
     parser.add_argument(
         "-r",
         "--num_rts",
         type=int,
-        default=10,
+        default=NUM_RTS,
         help="Number of Routes (RTs) per AP (unused).",
     )
     parser.add_argument(

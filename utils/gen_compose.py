@@ -10,8 +10,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
-NUM_APS = 2
-NUM_RTS = 10
+NUM_APS = 5
+NUM_RTS = 500
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
 BASE_IPV6 = "2001:db8:abcd:{}::1:1"

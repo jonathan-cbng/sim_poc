@@ -6,7 +6,7 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:1
     - AP_ID=1
-    - NUM_RTS=10
+    - NUM_RTS=500
     networks:
       apnet1:
         ipv4_address: 10.1.0.2
@@ -24,13 +24,67 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:2
     - AP_ID=2
-    - NUM_RTS=10
+    - NUM_RTS=500
     networks:
       apnet2:
         ipv4_address: 10.2.0.2
         ipv6_address: 2001:db8:abcd:2::1:1
     healthcheck:
       test: curl -g --fail http://[2001:db8:abcd:2::1:1]:8000/which_ip
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
+  ap3:
+    build: .
+    container_name: ap3
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:3
+    - AP_ID=3
+    - NUM_RTS=500
+    networks:
+      apnet3:
+        ipv4_address: 10.3.0.2
+        ipv6_address: 2001:db8:abcd:3::1:1
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:3::1:1]:8000/which_ip
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
+  ap4:
+    build: .
+    container_name: ap4
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:4
+    - AP_ID=4
+    - NUM_RTS=500
+    networks:
+      apnet4:
+        ipv4_address: 10.4.0.2
+        ipv6_address: 2001:db8:abcd:4::1:1
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:4::1:1]:8000/which_ip
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
+  ap5:
+    build: .
+    container_name: ap5
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:5
+    - AP_ID=5
+    - NUM_RTS=500
+    networks:
+      apnet5:
+        ipv4_address: 10.5.0.2
+        ipv6_address: 2001:db8:abcd:5::1:1
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:5::1:1]:8000/which_ip
       interval: 10s
       timeout: 3s
       retries: 3
@@ -50,3 +104,24 @@ networks:
       config:
       - subnet: 10.2.0.0/16
       - subnet: 2001:db8:abcd:2::/64
+  apnet3:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+      - subnet: 10.3.0.0/16
+      - subnet: 2001:db8:abcd:3::/64
+  apnet4:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+      - subnet: 10.4.0.0/16
+      - subnet: 2001:db8:abcd:4::/64
+  apnet5:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+      - subnet: 10.5.0.0/16
+      - subnet: 2001:db8:abcd:5::/64
