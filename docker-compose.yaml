@@ -11,7 +11,12 @@ services:
       apnet1:
         ipv4_address: 10.1.0.2
         ipv6_address: 2001:db8:abcd:1::fffe
-
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:1::fffe]:8000/which_ip
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
   ap2:
     build: .
     container_name: ap2
@@ -24,7 +29,12 @@ services:
       apnet2:
         ipv4_address: 10.2.0.2
         ipv6_address: 2001:db8:abcd:2::fffe
-
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:2::fffe]:8000/which_ip
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
 networks:
   apnet1:
     driver: bridge
