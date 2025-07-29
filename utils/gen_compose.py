@@ -14,7 +14,7 @@ NUM_APS = 2
 NUM_RTS = 10
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
-BASE_IPV6 = "2001:db8:abcd:{}::fffe"
+BASE_IPV6 = "2001:db8:abcd:{}::1:1"
 BASE_IPV6_SUBNET = "2001:db8:abcd:{}::/64"
 
 

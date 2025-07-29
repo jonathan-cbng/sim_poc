@@ -10,9 +10,9 @@ services:
     networks:
       apnet1:
         ipv4_address: 10.1.0.2
-        ipv6_address: 2001:db8:abcd:1::fffe
+        ipv6_address: 2001:db8:abcd:1::1:1
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:1::fffe]:8000/which_ip
+      test: curl -g --fail http://[2001:db8:abcd:1::1:1]:8000/which_ip
       interval: 10s
       timeout: 3s
       retries: 3
@@ -28,9 +28,9 @@ services:
     networks:
       apnet2:
         ipv4_address: 10.2.0.2
-        ipv6_address: 2001:db8:abcd:2::fffe
+        ipv6_address: 2001:db8:abcd:2::1:1
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:2::fffe]:8000/which_ip
+      test: curl -g --fail http://[2001:db8:abcd:2::1:1]:8000/which_ip
       interval: 10s
       timeout: 3s
       retries: 3
