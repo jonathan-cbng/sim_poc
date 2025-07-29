@@ -2,4 +2,5 @@ fastapi
 httpx
 pre-commit
 pyyaml
+ruff
 uvicorn
