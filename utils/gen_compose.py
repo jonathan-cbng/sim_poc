@@ -36,7 +36,7 @@ def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
             "networks": {net_name: {"ipv4_address": ipv4_addr, "ipv6_address": ipv6_addr}},
             "healthcheck": {
                 "test": f"curl -g --fail http://[{ipv6_addr}]:8000/which_ip",
-                "interval": "10s",
+                "interval": "30s",
                 "timeout": "3s",
                 "retries": 3,
                 "start_period": "120s",
