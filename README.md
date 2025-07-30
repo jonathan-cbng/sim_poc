@@ -36,6 +36,5 @@ sudo sysctl -w net.ipv6.neigh.default.gc_thresh3=1048576
 Adding many IPv6 addresses to the system is not without its performance considerations. When using a large number of
 IPv6 addresses the host kernel actually takes some time to honour the ip assignments requested by the guest containers.
 
-The easiest way to see when the system is actually ready to handle requests is to look at the output of `top`. If you
-see that the `kworker/u512:0-ipv6_addrconf` process is consuming a lot of CPU time, it means that the kernel is still
-processing the IPv6 address assignments.
+The way we detect this is by setting the health check for each container to ping the `/which_ip` endpoint of the last IP
+address assigned to the container (which is the last RT in the container).
