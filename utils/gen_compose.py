@@ -10,22 +10,21 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
-NUM_APS = 10
-NUM_RTS = 2500
+NUM_APS = 50
+NUM_RTS = 1500
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
-BASE_IPV6 = "2001:db8:abcd:{}::1:1"
+BASE_IPV6 = "2001:db8:abcd:{}::2"
 BASE_IPV6_SUBNET = "2001:db8:abcd:{}::/64"
 
 
 def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
     """Generate a Docker Compose file with the specified number of Access Points (APs) and Routes (RTs)."""
     services = {}
-    networks = {}
-
+    # Use a single network for all APs
+    network_name = "apnet"
     for i in range(1, num_aps + 1):
         ap_name = f"ap{i}"
-        net_name = f"apnet{i}"
         ipv4_addr = BASE_IPV4.format(i)
         ipv6_addr = BASE_IPV6.format(i)
         services[ap_name] = {
@@ -33,20 +32,29 @@ def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
             "container_name": ap_name,
             "privileged": True,
             "environment": [f"BASE_SUBNET=2001:db8:abcd:{i}", f"AP_ID={i}", f"NUM_RTS={num_rts}"],
-            "networks": {net_name: {"ipv4_address": ipv4_addr, "ipv6_address": ipv6_addr}},
+            "networks": {network_name: {"ipv4_address": ipv4_addr, "ipv6_address": ipv6_addr}},
             "healthcheck": {
                 "test": f"curl -g --fail http://[{ipv6_addr}]:8000/which_ip",
-                "interval": "10s",
+                "interval": "30s",
                 "timeout": "3s",
                 "retries": 3,
-                "start_period": "120s",
+                "start_period": "600s",
             },
         }
-        networks[net_name] = {
+
+    # Define a single network covering all APs
+    networks = {
+        network_name: {
             "driver": "bridge",
             "enable_ipv6": True,
-            "ipam": {"config": [{"subnet": BASE_IPV4_SUBNET.format(i)}, {"subnet": BASE_IPV6_SUBNET.format(i)}]},
+            "ipam": {
+                "config": [
+                    {"subnet": "10.0.0.0/8"},
+                    {"subnet": "2001:db8:abcd::/48"},
+                ]
+            },
         }
+    }
 
     docker_compose = {"services": services, "networks": networks}
 

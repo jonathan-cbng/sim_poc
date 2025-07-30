@@ -6,17 +6,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:1
     - AP_ID=1
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet1:
+      apnet:
         ipv4_address: 10.1.0.2
-        ipv6_address: 2001:db8:abcd:1::1:1
+        ipv6_address: 2001:db8:abcd:1::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:1::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:1::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap2:
     build: .
     container_name: ap2
@@ -24,17 +24,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:2
     - AP_ID=2
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet2:
+      apnet:
         ipv4_address: 10.2.0.2
-        ipv6_address: 2001:db8:abcd:2::1:1
+        ipv6_address: 2001:db8:abcd:2::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:2::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:2::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap3:
     build: .
     container_name: ap3
@@ -42,17 +42,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:3
     - AP_ID=3
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet3:
+      apnet:
         ipv4_address: 10.3.0.2
-        ipv6_address: 2001:db8:abcd:3::1:1
+        ipv6_address: 2001:db8:abcd:3::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:3::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:3::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap4:
     build: .
     container_name: ap4
@@ -60,17 +60,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:4
     - AP_ID=4
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet4:
+      apnet:
         ipv4_address: 10.4.0.2
-        ipv6_address: 2001:db8:abcd:4::1:1
+        ipv6_address: 2001:db8:abcd:4::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:4::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:4::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap5:
     build: .
     container_name: ap5
@@ -78,17 +78,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:5
     - AP_ID=5
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet5:
+      apnet:
         ipv4_address: 10.5.0.2
-        ipv6_address: 2001:db8:abcd:5::1:1
+        ipv6_address: 2001:db8:abcd:5::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:5::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:5::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap6:
     build: .
     container_name: ap6
@@ -96,17 +96,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:6
     - AP_ID=6
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet6:
+      apnet:
         ipv4_address: 10.6.0.2
-        ipv6_address: 2001:db8:abcd:6::1:1
+        ipv6_address: 2001:db8:abcd:6::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:6::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:6::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap7:
     build: .
     container_name: ap7
@@ -114,17 +114,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:7
     - AP_ID=7
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet7:
+      apnet:
         ipv4_address: 10.7.0.2
-        ipv6_address: 2001:db8:abcd:7::1:1
+        ipv6_address: 2001:db8:abcd:7::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:7::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:7::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap8:
     build: .
     container_name: ap8
@@ -132,17 +132,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:8
     - AP_ID=8
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet8:
+      apnet:
         ipv4_address: 10.8.0.2
-        ipv6_address: 2001:db8:abcd:8::1:1
+        ipv6_address: 2001:db8:abcd:8::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:8::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:8::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap9:
     build: .
     container_name: ap9
@@ -150,17 +150,17 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:9
     - AP_ID=9
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet9:
+      apnet:
         ipv4_address: 10.9.0.2
-        ipv6_address: 2001:db8:abcd:9::1:1
+        ipv6_address: 2001:db8:abcd:9::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:9::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:9::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
   ap10:
     build: .
     container_name: ap10
@@ -168,85 +168,742 @@ services:
     environment:
     - BASE_SUBNET=2001:db8:abcd:10
     - AP_ID=10
-    - NUM_RTS=2500
+    - NUM_RTS=1500
     networks:
-      apnet10:
+      apnet:
         ipv4_address: 10.10.0.2
-        ipv6_address: 2001:db8:abcd:10::1:1
+        ipv6_address: 2001:db8:abcd:10::2
     healthcheck:
-      test: curl -g --fail http://[2001:db8:abcd:10::1:1]:8000/which_ip
-      interval: 10s
+      test: curl -g --fail http://[2001:db8:abcd:10::2]:8000/which_ip
+      interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 120s
+      start_period: 600s
+  ap11:
+    build: .
+    container_name: ap11
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:11
+    - AP_ID=11
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.11.0.2
+        ipv6_address: 2001:db8:abcd:11::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:11::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap12:
+    build: .
+    container_name: ap12
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:12
+    - AP_ID=12
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.12.0.2
+        ipv6_address: 2001:db8:abcd:12::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:12::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap13:
+    build: .
+    container_name: ap13
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:13
+    - AP_ID=13
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.13.0.2
+        ipv6_address: 2001:db8:abcd:13::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:13::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap14:
+    build: .
+    container_name: ap14
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:14
+    - AP_ID=14
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.14.0.2
+        ipv6_address: 2001:db8:abcd:14::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:14::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap15:
+    build: .
+    container_name: ap15
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:15
+    - AP_ID=15
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.15.0.2
+        ipv6_address: 2001:db8:abcd:15::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:15::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap16:
+    build: .
+    container_name: ap16
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:16
+    - AP_ID=16
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.16.0.2
+        ipv6_address: 2001:db8:abcd:16::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:16::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap17:
+    build: .
+    container_name: ap17
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:17
+    - AP_ID=17
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.17.0.2
+        ipv6_address: 2001:db8:abcd:17::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:17::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap18:
+    build: .
+    container_name: ap18
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:18
+    - AP_ID=18
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.18.0.2
+        ipv6_address: 2001:db8:abcd:18::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:18::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap19:
+    build: .
+    container_name: ap19
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:19
+    - AP_ID=19
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.19.0.2
+        ipv6_address: 2001:db8:abcd:19::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:19::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap20:
+    build: .
+    container_name: ap20
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:20
+    - AP_ID=20
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.20.0.2
+        ipv6_address: 2001:db8:abcd:20::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:20::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap21:
+    build: .
+    container_name: ap21
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:21
+    - AP_ID=21
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.21.0.2
+        ipv6_address: 2001:db8:abcd:21::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:21::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap22:
+    build: .
+    container_name: ap22
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:22
+    - AP_ID=22
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.22.0.2
+        ipv6_address: 2001:db8:abcd:22::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:22::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap23:
+    build: .
+    container_name: ap23
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:23
+    - AP_ID=23
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.23.0.2
+        ipv6_address: 2001:db8:abcd:23::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:23::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap24:
+    build: .
+    container_name: ap24
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:24
+    - AP_ID=24
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.24.0.2
+        ipv6_address: 2001:db8:abcd:24::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:24::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap25:
+    build: .
+    container_name: ap25
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:25
+    - AP_ID=25
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.25.0.2
+        ipv6_address: 2001:db8:abcd:25::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:25::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap26:
+    build: .
+    container_name: ap26
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:26
+    - AP_ID=26
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.26.0.2
+        ipv6_address: 2001:db8:abcd:26::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:26::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap27:
+    build: .
+    container_name: ap27
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:27
+    - AP_ID=27
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.27.0.2
+        ipv6_address: 2001:db8:abcd:27::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:27::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap28:
+    build: .
+    container_name: ap28
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:28
+    - AP_ID=28
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.28.0.2
+        ipv6_address: 2001:db8:abcd:28::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:28::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap29:
+    build: .
+    container_name: ap29
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:29
+    - AP_ID=29
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.29.0.2
+        ipv6_address: 2001:db8:abcd:29::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:29::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap30:
+    build: .
+    container_name: ap30
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:30
+    - AP_ID=30
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.30.0.2
+        ipv6_address: 2001:db8:abcd:30::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:30::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap31:
+    build: .
+    container_name: ap31
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:31
+    - AP_ID=31
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.31.0.2
+        ipv6_address: 2001:db8:abcd:31::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:31::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap32:
+    build: .
+    container_name: ap32
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:32
+    - AP_ID=32
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.32.0.2
+        ipv6_address: 2001:db8:abcd:32::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:32::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap33:
+    build: .
+    container_name: ap33
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:33
+    - AP_ID=33
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.33.0.2
+        ipv6_address: 2001:db8:abcd:33::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:33::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap34:
+    build: .
+    container_name: ap34
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:34
+    - AP_ID=34
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.34.0.2
+        ipv6_address: 2001:db8:abcd:34::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:34::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap35:
+    build: .
+    container_name: ap35
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:35
+    - AP_ID=35
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.35.0.2
+        ipv6_address: 2001:db8:abcd:35::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:35::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap36:
+    build: .
+    container_name: ap36
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:36
+    - AP_ID=36
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.36.0.2
+        ipv6_address: 2001:db8:abcd:36::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:36::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap37:
+    build: .
+    container_name: ap37
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:37
+    - AP_ID=37
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.37.0.2
+        ipv6_address: 2001:db8:abcd:37::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:37::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap38:
+    build: .
+    container_name: ap38
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:38
+    - AP_ID=38
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.38.0.2
+        ipv6_address: 2001:db8:abcd:38::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:38::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap39:
+    build: .
+    container_name: ap39
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:39
+    - AP_ID=39
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.39.0.2
+        ipv6_address: 2001:db8:abcd:39::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:39::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap40:
+    build: .
+    container_name: ap40
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:40
+    - AP_ID=40
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.40.0.2
+        ipv6_address: 2001:db8:abcd:40::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:40::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap41:
+    build: .
+    container_name: ap41
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:41
+    - AP_ID=41
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.41.0.2
+        ipv6_address: 2001:db8:abcd:41::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:41::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap42:
+    build: .
+    container_name: ap42
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:42
+    - AP_ID=42
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.42.0.2
+        ipv6_address: 2001:db8:abcd:42::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:42::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap43:
+    build: .
+    container_name: ap43
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:43
+    - AP_ID=43
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.43.0.2
+        ipv6_address: 2001:db8:abcd:43::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:43::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap44:
+    build: .
+    container_name: ap44
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:44
+    - AP_ID=44
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.44.0.2
+        ipv6_address: 2001:db8:abcd:44::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:44::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap45:
+    build: .
+    container_name: ap45
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:45
+    - AP_ID=45
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.45.0.2
+        ipv6_address: 2001:db8:abcd:45::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:45::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap46:
+    build: .
+    container_name: ap46
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:46
+    - AP_ID=46
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.46.0.2
+        ipv6_address: 2001:db8:abcd:46::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:46::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap47:
+    build: .
+    container_name: ap47
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:47
+    - AP_ID=47
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.47.0.2
+        ipv6_address: 2001:db8:abcd:47::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:47::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap48:
+    build: .
+    container_name: ap48
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:48
+    - AP_ID=48
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.48.0.2
+        ipv6_address: 2001:db8:abcd:48::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:48::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap49:
+    build: .
+    container_name: ap49
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:49
+    - AP_ID=49
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.49.0.2
+        ipv6_address: 2001:db8:abcd:49::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:49::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
+  ap50:
+    build: .
+    container_name: ap50
+    privileged: true
+    environment:
+    - BASE_SUBNET=2001:db8:abcd:50
+    - AP_ID=50
+    - NUM_RTS=1500
+    networks:
+      apnet:
+        ipv4_address: 10.50.0.2
+        ipv6_address: 2001:db8:abcd:50::2
+    healthcheck:
+      test: curl -g --fail http://[2001:db8:abcd:50::2]:8000/which_ip
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 600s
 networks:
-  apnet1:
+  apnet:
     driver: bridge
     enable_ipv6: true
     ipam:
       config:
-      - subnet: 10.1.0.0/16
-      - subnet: 2001:db8:abcd:1::/64
-  apnet2:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.2.0.0/16
-      - subnet: 2001:db8:abcd:2::/64
-  apnet3:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.3.0.0/16
-      - subnet: 2001:db8:abcd:3::/64
-  apnet4:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.4.0.0/16
-      - subnet: 2001:db8:abcd:4::/64
-  apnet5:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.5.0.0/16
-      - subnet: 2001:db8:abcd:5::/64
-  apnet6:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.6.0.0/16
-      - subnet: 2001:db8:abcd:6::/64
-  apnet7:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.7.0.0/16
-      - subnet: 2001:db8:abcd:7::/64
-  apnet8:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.8.0.0/16
-      - subnet: 2001:db8:abcd:8::/64
-  apnet9:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.9.0.0/16
-      - subnet: 2001:db8:abcd:9::/64
-  apnet10:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: 10.10.0.0/16
-      - subnet: 2001:db8:abcd:10::/64
+      - subnet: 10.0.0.0/8
+      - subnet: 2001:db8:abcd::/48
