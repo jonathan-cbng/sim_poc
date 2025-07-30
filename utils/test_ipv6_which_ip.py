@@ -20,17 +20,16 @@ NUM_APS = 50
 NUM_RTS = 1500
 
 
-async def check_which_ip(ipv6_addr: str, port: int = 8000, timeout: float = 2.0) -> bool:
+async def check_which_ip(ipv6_addr: str, client: httpx.AsyncClient, port: int = 8000, timeout: float = 2.0) -> bool:
     url = f"http://[{ipv6_addr}]:{port}/which_ip"
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.get(url)
-            if resp.status_code == status.HTTP_200_OK:
-                logger.debug(f"Success: {url}")
-                return True
-            else:
-                logger.warning(f"Non-200 response from {url}: {resp.status_code}")
-                return False
+        resp = await client.get(url, timeout=timeout)
+        if resp.status_code == status.HTTP_200_OK:
+            logger.debug(f"Success: {url}")
+            return True
+        else:
+            logger.warning(f"Non-200 response from {url}: {resp.status_code}")
+            return False
     except Exception as e:
         logger.error(f"Failed to reach {url}: {e}")
         return False
@@ -38,51 +37,49 @@ async def check_which_ip(ipv6_addr: str, port: int = 8000, timeout: float = 2.0)
 
 async def main(num_aps: int, num_rts: int):
     ap_base_ipv6 = f"{IPV6_PREFIX}:{{}}::1:1"
+    async with httpx.AsyncClient() as client:
+        # Check AP addresses first
+        ap_tasks = []
+        for i in range(1, num_aps + 1):
+            ipv6_addr = ap_base_ipv6.format(i)
+            ap_tasks.append(check_which_ip(ipv6_addr, client))
+        ap_results = await asyncio.gather(*ap_tasks)
+        ap_success = sum(ap_results)
+        logger.info(f"{ap_success}/{num_aps} AP addresses responded to /which_ip")
 
-    # Check AP addresses first
-    ap_tasks = []
-    for i in range(1, num_aps + 1):
-        ipv6_addr = ap_base_ipv6.format(i)
-        ap_tasks.append(check_which_ip(ipv6_addr))
-    ap_results = await asyncio.gather(*ap_tasks)
-    ap_success = sum(ap_results)
-    logger.info(f"{ap_success}/{num_aps} AP addresses responded to /which_ip")
+        # Then check RT addresses, grouped by AP, with progress bar
+        rt_success = 0
+        for i in range(1, num_aps + 1):
+            base_subnet = f"{IPV6_PREFIX}:{i}::2"
+            widgets = [
+                f"AP {i} RTs ",
+                progressbar.FormatLabel("(%(value)d/%(max_value)d)"),
+                progressbar.Percentage(),
+                " ",
+                progressbar.Bar(),
+                " ",
+                progressbar.ETA(),
+                " ",
+            ]
+            with progressbar.ProgressBar(max_value=num_rts, widgets=widgets) as bar:
+                ap_rt_success = 0
+                rt_id = 1
+                while rt_id <= num_rts:
+                    batch = []
+                    for j in range(rt_id, min(rt_id + 100, num_rts + 1)):
+                        rt_addr = f"{base_subnet}:{j:x}"
+                        batch.append(check_which_ip(rt_addr, client))
+                    results = await asyncio.gather(*batch)
+                    ap_rt_success += sum(results)
+                    bar.update(min(rt_id + 100 - 1, num_rts))
+                    rt_id += 100
+                rt_success += ap_rt_success
+            logger.info(f"AP {i} ({base_subnet}:1..{num_rts + 1}): {ap_rt_success}/{num_rts} RT addresses OK")
 
-    # Then check RT addresses, grouped by AP, with progress bar
-    rt_success = 0
-    for i in range(1, num_aps + 1):
-        base_subnet = f"{IPV6_PREFIX}:{i}::2"
-        widgets = [
-            f"AP {i} RTs ",
-            progressbar.FormatLabel("(%(value)d/%(max_value)d)"),
-            progressbar.Percentage(),
-            " ",
-            progressbar.Bar(),
-            " ",
-            progressbar.ETA(),
-            " ",
-        ]
-        with progressbar.ProgressBar(max_value=num_rts, widgets=widgets) as bar:
-            ap_rt_success = 0
-            rt_id = 1
-            while rt_id <= num_rts:
-                batch = []
-                for j in range(rt_id, min(rt_id + 100, num_rts + 1)):
-                    rt_addr = f"{base_subnet}:{j:x}"
-                    batch.append(check_which_ip(rt_addr))
-                results = await asyncio.gather(*batch)
-                ap_rt_success += sum(results)
-                bar.update(min(rt_id + 100 - 1, num_rts))
-                rt_id += 100
-            rt_success += ap_rt_success
-        logger.info(
-            f"AP {i} ({base_subnet}:1..{num_rts + 1}): {ap_rt_success}/{num_rts} RT addresses responded to /which_ip"
-        )
-
-    num_total = num_aps + num_aps * num_rts
-    success = ap_success + rt_success
-    if success != num_total:
-        sys.exit(1)
+        num_total = num_aps + num_aps * num_rts
+        success = ap_success + rt_success
+        if success != num_total:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
