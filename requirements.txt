@@ -4,3 +4,4 @@ pre-commit
 pyyaml
 ruff
 uvicorn
+progressbar2

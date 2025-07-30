@@ -10,8 +10,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
-NUM_APS = 5
-NUM_RTS = 100
+NUM_APS = 10
+NUM_RTS = 2500
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
 BASE_IPV6 = "2001:db8:abcd:{}::1:1"
@@ -36,7 +36,7 @@ def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
             "networks": {net_name: {"ipv4_address": ipv4_addr, "ipv6_address": ipv6_addr}},
             "healthcheck": {
                 "test": f"curl -g --fail http://[{ipv6_addr}]:8000/which_ip",
-                "interval": "30s",
+                "interval": "10s",
                 "timeout": "3s",
                 "retries": 3,
                 "start_period": "120s",
