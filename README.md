@@ -38,3 +38,9 @@ IPv6 addresses the host kernel actually takes some time to honour the ip assignm
 
 The way we detect this is by setting the health check for each container to ping the `/which_ip` endpoint of the last IP
 address assigned to the container (which is the last RT in the container).
+
+## Pre-requisites
+
+```bash
+sudo apt-get update && apt-get install -y clang-format cppcheck
+```

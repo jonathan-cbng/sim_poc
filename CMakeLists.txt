@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(ap_module)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Use Python_EXECUTABLE if specified
 if(DEFINED Python_EXECUTABLE)
     set(Python3_EXECUTABLE ${Python_EXECUTABLE})
