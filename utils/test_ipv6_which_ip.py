@@ -39,10 +39,8 @@ async def main(num_aps: int, num_rts: int):
     ap_base_ipv6 = f"{IPV6_PREFIX}:{{}}::1:1"
     async with httpx.AsyncClient() as client:
         # Check AP addresses first
-        ap_tasks = []
-        for i in range(1, num_aps + 1):
-            ipv6_addr = ap_base_ipv6.format(i)
-            ap_tasks.append(check_which_ip(ipv6_addr, client))
+        ap_ip_addr = (ap_base_ipv6.format(i) for i in range(1, num_aps + 1))
+        ap_tasks = [check_which_ip(ip, client) for ip in ap_ip_addr]
         ap_results = await asyncio.gather(*ap_tasks)
         ap_success = sum(ap_results)
         logger.info(f"{ap_success}/{num_aps} AP addresses responded to /which_ip")
@@ -65,14 +63,13 @@ async def main(num_aps: int, num_rts: int):
                 ap_rt_success = 0
                 rt_id = 1
                 while rt_id <= num_rts:
-                    batch = []
-                    for j in range(rt_id, min(rt_id + 100, num_rts + 1)):
-                        rt_addr = f"{base_subnet}:{j:x}"
-                        batch.append(check_which_ip(rt_addr, client))
+                    next_rt_id = min(rt_id + 100, num_rts + 1)
+                    rt_addrs = (f"{base_subnet}:{j:x}" for j in range(rt_id, next_rt_id))
+                    batch = [check_which_ip(rt_addr, client) for rt_addr in rt_addrs]
                     results = await asyncio.gather(*batch)
                     ap_rt_success += sum(results)
-                    bar.update(min(rt_id + 100 - 1, num_rts))
-                    rt_id += 100
+                    bar.update(next_rt_id - 1)
+                    rt_id = next_rt_id
                 rt_success += ap_rt_success
             logger.info(f"AP {i} ({base_subnet}:1..{num_rts + 1}): {ap_rt_success}/{num_rts} RT addresses OK")
 

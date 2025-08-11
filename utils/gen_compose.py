@@ -34,9 +34,7 @@ def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
             "environment": [f"BASE_SUBNET=2001:db8:abcd:{i}", f"AP_ID={i}", f"NUM_RTS={num_rts}"],
             "networks": {network_name: {"ipv4_address": ipv4_addr, "ipv6_address": ipv6_addr}},
             "healthcheck": {
-                # Check the last RT IPv6 address (RT id in hex)
-                "test": f"curl -g --fail http://[2001:db8:abcd:{i}::2:{num_rts:x}]:8000/which_ip",
-                "interval": "30s",
+                "test": f"curl -g --fail http://[{ipv6_addr}]:8000/which_ip",
                 "timeout": "3s",
                 "retries": 3,
                 "start_period": "600s",
