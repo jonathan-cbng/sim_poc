@@ -1,14 +1,36 @@
-FROM python:3.12-slim
+# Builder stage
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y iproute2 curl procps && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    python3-dev \
+    pybind11-dev \
+    iproute2 curl procps \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# Copy source and build
+COPY . .
+RUN cmake -S . -B build && cmake --build build --config Release && cmake --install build
 
-COPY src/main.py main.py
+# Runtime stage
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+COPY requirements.txt requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy built extension from builder stage
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ap*.so /usr/local/lib/python3.12/site-packages/
+
+COPY src_py .
 COPY entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
