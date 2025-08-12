@@ -5,7 +5,7 @@
 #include <set>
 #include <string>
 
-class AP : public Node
+class AP : public Node, public std::enable_shared_from_this<AP>
 {
 public:
   std::set<std::shared_ptr<RT> > rts;

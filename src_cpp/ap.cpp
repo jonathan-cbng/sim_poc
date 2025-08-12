@@ -11,7 +11,7 @@ void
 AP::add_rt (const std::shared_ptr<RT> &rt)
 {
   rts.insert (rt);
-  rt->ap = std::shared_ptr<AP> (this, [] (AP *) {});
+  rt->ap = shared_from_this ();
 }
 
 void
