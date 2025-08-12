@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.12)
 project(ap_module)
 
+# Force clang-tidy checking on the project
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=-std=c++23;-config-file=${CMAKE_SOURCE_DIR}/.clang-tidy")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Use Python_EXECUTABLE if specified
 if(DEFINED Python_EXECUTABLE)
@@ -42,8 +45,3 @@ find_program(CPPCHECK cppcheck)
 if(NOT CPPCHECK)
     message(FATAL_ERROR "cppcheck not found. Please install cppcheck to run static analysis.")
 endif()
-add_custom_target(
-        cppcheck
-        COMMAND cppcheck --inconclusive --force --std=c++23 --quiet src_cpp/
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)

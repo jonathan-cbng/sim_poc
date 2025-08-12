@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
+    cppcheck \
     python3-dev \
     pybind11-dev \
     iproute2 curl procps \
@@ -17,7 +18,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy source and build
 COPY . .
-RUN cmake -S . -B build && cmake --build build --config Release && cmake --install build
+RUN cmake -S . -B build && cmake --build build --target cppcheck && cmake --build build --config Release && cmake --install build
 
 # Runtime stage
 FROM python:3.12-slim AS runtime

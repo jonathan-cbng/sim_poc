@@ -4,8 +4,11 @@
 class Node
 {
 public:
+  static constexpr int INVALID_ID = -1;
+  static constexpr int MAX_ID = 1000000;
+
   int id;
   explicit Node (int id_ = -1);
   virtual ~Node () = default;
-  [[nodiscard]] virtual std::string repr () const;
+  std::string repr () const;
 };

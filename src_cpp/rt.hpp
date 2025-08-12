@@ -12,5 +12,5 @@ public:
 
   explicit RT (int id_ = -1);
 
-  std::string repr () const override;
+  std::string repr () const;
 };

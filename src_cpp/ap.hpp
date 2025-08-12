@@ -12,7 +12,7 @@ public:
 
   explicit AP (int id_ = -1);
 
-  void add_rt (std::shared_ptr<RT> rt);
-  void remove_rt (std::shared_ptr<RT> rt);
-  std::string repr () const override;
+  void add_rt (const std::shared_ptr<RT> &rt);
+  void remove_rt (const std::shared_ptr<RT> &rt);
+  std::string repr () const;
 };

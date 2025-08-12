@@ -1,5 +1,6 @@
 #include "rt.hpp"
-#include "ap.hpp"
+#include "node.hpp"
+#include <string>
 
 RT::RT (int id_) : Node (id_), ap (nullptr) {}
 

@@ -1,0 +1,10 @@
+Checks: >
+  *,
+  -llvmlibc-*,
+  -fuchsia-*,
+  -readability-identifier-length,
+  -misc-include-cleaner,
+  -modernize-use-trailing-return-type
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle: GNU
