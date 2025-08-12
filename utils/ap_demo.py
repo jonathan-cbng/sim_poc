@@ -15,7 +15,7 @@ class RT(node_sim.RT):
 
 # Create an AP instance
 ap_instance = AP(1000)
-print(ap_instance.id)  # Output: 42
+print(ap_instance)  # Output: 42
 for id in range(10):
     rt = RT(id)
     ap_instance.add_rt(rt)
