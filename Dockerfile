@@ -28,7 +28,7 @@ COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy built extension from builder stage
-COPY --from=builder /usr/local/lib/python3.12/site-packages/ap*.so /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/lib/python3.12/site-packages/node_sim*.so /usr/local/lib/python3.12/site-packages/
 
 COPY src_py .
 COPY entrypoint.sh entrypoint.sh

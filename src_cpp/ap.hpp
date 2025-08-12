@@ -1,0 +1,18 @@
+#pragma once
+#include "node.hpp"
+#include "rt.hpp"
+#include <memory>
+#include <set>
+#include <string>
+
+class AP : public Node
+{
+public:
+  std::set<std::shared_ptr<RT> > rts;
+
+  explicit AP (int id_ = -1);
+
+  void add_rt (std::shared_ptr<RT> rt);
+  void remove_rt (std::shared_ptr<RT> rt);
+  std::string repr () const override;
+};

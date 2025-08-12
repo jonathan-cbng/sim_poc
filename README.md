@@ -1,4 +1,169 @@
-# sim_poc
+# Workbench Simulator: Multi-AP Single-Worker Prototype
+
+A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
+Application Under Test (AUT).
+
+Technology stack:
+
+- Control Plane: FastAPI
+- Persistence: SQLite + SQLAlchemy (with dependency-injected session)
+- Worker: Single process hosting many AP actors via asyncio
+- IPC: In-memory multiprocessing queues (no external broker)
+- Outbound HTTP: aiohttp sessions (per AP, optional IPv6 source binding)
+
+## Capabilities
+
+- Create / delete APs dynamically
+- Configure per-AP heartbeat interval
+- Create initial RTs with AP or add more later
+- RT & AP registration logic stubs (POST to AUT endpoints)
+- AP-level alarms
+- RT-level alarms (specific IDs or percentage sampling)
+- Status aggregation (1 Hz) from worker → control API
+- Test-friendly DB session dependency for overrides
+
+## Directory Layout
+
+```
+control/
+  app.py          FastAPI endpoints and models
+  db.py           DB engine & get_db dependency
+worker/
+  manager.py      WorkerManager (spawns and commands worker process)
+  worker.py       Async worker (AP + RT actors)
+Dockerfile
+docker-compose.yml
+requirements.txt
+README.md
+.env.example
+.gitignore
+```
+
+## Quick Start (Local Dev)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn control.app:app --reload
+```
+
+Control API: http://localhost:8000
+
+(Optional) Start a mock AUT (httpbin via docker-compose) for basic endpoint hit validation.
+
+## Core Endpoints
+
+| Method | Path               | Purpose                                            |
+| ------ | ------------------ | -------------------------------------------------- |
+| POST   | /aps               | Create & start an AP (optionally with initial RTs) |
+| GET    | /aps               | List statuses of all APs                           |
+| GET    | /aps/{ap_id}       | Get status for a single AP                         |
+| POST   | /aps/{ap_id}/rts   | Add RTs to an existing AP                          |
+| POST   | /aps/{ap_id}/alarm | Trigger AP-level or RT-level alarms                |
+| DELETE | /aps/{ap_id}       | Stop and remove an AP                              |
+
+### Example: Create an AP
+
+```bash
+curl -X POST http://localhost:8000/aps \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ap_id": "ap-1",
+    "aut_base_url": "http://localhost:8080",
+    "heartbeat_seconds": 10,
+    "rt_count": 5
+  }'
+```
+
+### Add RTs
+
+```bash
+curl -X POST http://localhost:8000/aps/ap-1/rts \
+  -H "Content-Type: application/json" \
+  -d '{"add": 3}'
+```
+
+### Trigger Alarms
+
+AP-level:
+
+```bash
+curl -X POST http://localhost:8000/aps/ap-1/alarm \
+  -H "Content-Type: application/json" \
+  -d '{"target":"ap"}'
+```
+
+25% of RTs:
+
+```bash
+curl -X POST http://localhost:8000/aps/ap-1/alarm \
+  -H "Content-Type: application/json" \
+  -d '{"target":"rt","percent":25}'
+```
+
+Specific RT IDs:
+
+```bash
+curl -X POST http://localhost:8000/aps/ap-1/alarm \
+  -H "Content-Type: application/json" \
+  -d '{"target":"rt","rt_ids":[0,2,5]}'
+```
+
+### Delete AP
+
+```bash
+curl -X DELETE http://localhost:8000/aps/ap-1
+```
+
+## AUT Endpoint Expectations (Stubbed)
+
+The simulator will attempt POST requests to (adjust or mock as needed):
+
+- {aut_base_url}/ap/register
+- {aut_base_url}/ap/heartbeat
+- {aut_base_url}/ap/alarm
+- {aut_base_url}/rt/register
+- {aut_base_url}/rt/alarm
+
+Return any 2xx to mark success.
+
+## Testing: Overriding the DB
+
+```python
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from control.app import app
+from control.db import Base, get_db
+
+engine = create_engine("sqlite:///./test_sim.db", connect_args={"check_same_thread": False})
+TestingSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+Base.metadata.create_all(bind=engine)
+
+
+def override_db():
+    db = TestingSession()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_db
+client = TestClient(app)
+```
+
+## Scaling Roadmap
+
+1. Current: Single worker, many AP actors (sufficient for dev / moderate load).
+2. Multi-worker: Shard APs across processes via hashing (extend WorkerManager).
+3. External transport: Replace MP queues with Redis / NATS / RabbitMQ if multi-host.
+4. Metrics: Add Prometheus exposition in control process.
+5. Logging: Introduce structured JSON logs and correlation IDs.
+6. High-scale timers: Move heartbeats to a central scheduler / timer wheel.
+
+# Proof of Concept
 
 Simple proof of concept for the AP/RT simulator - currently tested to 75000 nodes (50 APs with 1500 RTs each).
 

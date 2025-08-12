@@ -1,31 +1,23 @@
-// This file defines a C++ class AP and exposes it to Python using pybind11.
-// The AP class has an integer ID and a greet method.
-#include <pybind11/pybind11.h>
-namespace py = pybind11;
+#include "ap.hpp"
 
-// AP class definition
-class AP
+AP::AP (int id_) : Node (id_) {}
+
+void
+AP::add_rt (std::shared_ptr<RT> rt)
 {
-public:
-  int ap_id; // Access Point ID
+  rts.insert (rt);
+  rt->ap = std::shared_ptr<AP> (this, [] (AP *) {});
+}
 
-  // Constructor: initializes AP with a given ID
-  explicit AP (int id) : ap_id (id) {}
-
-  // Returns a greeting string containing the AP ID
-  std::string
-  greet () const
-  {
-    return "Hello from AP " + std::to_string (ap_id);
-  }
-};
-
-// Python module definition using pybind11
-PYBIND11_MODULE (ap, m)
+void
+AP::remove_rt (std::shared_ptr<RT> rt)
 {
-  // Expose AP class to Python
-  py::class_<AP> (m, "AP")
-      .def (py::init<int> ())              // Constructor binding
-      .def_readwrite ("ap_id", &AP::ap_id) // Expose ap_id for read/write
-      .def ("greet", &AP::greet);          // Expose greet method
+  rts.erase (rt);
+  rt->ap = nullptr;
+}
+
+std::string
+AP::repr () const
+{
+  return "AP(" + std::to_string (id) + ")";
 }
