@@ -2,18 +2,18 @@
 #include <random>
 #include <string>
 
-Node::Node (int id_)
+Node::Node (int id)
 {
-  if (id_ == INVALID_ID)
+  if (id == INVALID_ID)
     {
       static std::random_device rd;
       static std::mt19937 gen (rd ());
       static std::uniform_int_distribution<> dis (1, MAX_ID);
-      id = dis (gen);
+      this->id = dis (gen);
     }
   else
     {
-      id = id_;
+      this->id = id;
     }
 }
 

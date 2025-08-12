@@ -1,17 +1,4 @@
-import sys
-
-sys.path.append("build")  # Add build directory to Python path
-
-import node_sim
-
-
-class AP(node_sim.AP):
-    pass
-
-
-class RT(node_sim.RT):
-    pass
-
+from node_sim import AP, RT
 
 # Create an AP instance
 ap_instance = AP(1000)
@@ -21,3 +8,5 @@ for id in range(10):
     ap_instance.add_rt(rt)
 
 print(ap_instance.rts)  # Output: [<__main__.RT object at ...
+
+print(ap_instance)

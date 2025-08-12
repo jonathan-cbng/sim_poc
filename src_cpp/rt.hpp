@@ -10,7 +10,7 @@ class RT : public Node
 public:
   std::shared_ptr<AP> ap;
 
-  explicit RT (int id_ = -1);
+  explicit RT (int id = INVALID_ID);
 
   std::string repr () const;
 };

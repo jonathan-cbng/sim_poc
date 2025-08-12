@@ -8,7 +8,7 @@ public:
   static constexpr int MAX_ID = 1000000;
 
   int id;
-  explicit Node (int id_ = -1);
+  explicit Node (int id = INVALID_ID);
   virtual ~Node () = default;
   std::string repr () const;
 };
