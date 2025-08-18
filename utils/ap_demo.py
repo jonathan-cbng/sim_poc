@@ -1,4 +1,13 @@
-from node_sim import AP, RT
+from node_sim import _AP, _RT
+
+
+class AP(_AP):
+    pass
+
+
+class RT(_RT):
+    pass
+
 
 # Create an AP instance
 ap_instance = AP(1000)
