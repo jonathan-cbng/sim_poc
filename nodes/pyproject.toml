@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.8.0",
+    "pybind11[global]",
+    "setuptools>=61.0"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "nodes"
+version = "0.1.0"
+description = "Python package wrapping C++ code with pybind11 and CMake-built .so file."
+readme = "README.md"
+requires-python = ">=3.7"
+
+[tool.scikit-build]
+# Optional: specify the CMake minimum version, build type, etc.
+# cmake.minimum-version = "3.15"
+# build-type = "Release"

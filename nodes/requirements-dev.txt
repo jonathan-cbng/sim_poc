@@ -1,0 +1,10 @@
+# Python build and packaging requirements for development
+build
+scikit-build-core>=0.8.0
+pybind11[global]
+setuptools>=61.0
+# Optional: for static analysis and code quality
+clang-tidy
+cppcheck
+# Optional: for faster CMake builds
+ninja

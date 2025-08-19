@@ -10,16 +10,14 @@ RUN apt-get update && apt-get install -y \
     iproute2 curl procps \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
+COPY nodes/requirements-dev.txt nodes/requirements-dev.txt
+RUN pip install --upgrade pip && pip install -r nodes/requirements-dev.txt
 
-# Copy source and build
-COPY node_sim node_sim
-WORKDIR /app/node_sim
-RUN cmake -S . -B build && \
-    cmake --build build --target cppcheck && \
-    cmake --build build --config Release && \
-    cmake --install build
+COPY nodes nodes
+
+# Copy source for nodes package and build wheel
+WORKDIR /app/nodes
+RUN python -m build --wheel
 
 # Runtime stage
 FROM python:3.11-slim AS runtime
@@ -29,11 +27,10 @@ WORKDIR /app
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy built extension from builder stage
+# Copy built wheel from builder stage and install
+COPY --from=builder /app/nodes/dist/*.whl /tmp/
+RUN pip install /tmp/*.whl
 
-RUN mkdir /app/node_sim
-COPY --from=builder /app/node_sim/*.so node_sim
-COPY --from=builder /app/node_sim/*.py node_sim
 COPY src src
 COPY utils utils
 COPY entrypoint.sh entrypoint.sh

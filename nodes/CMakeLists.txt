@@ -39,8 +39,8 @@ endif()
 # Set install prefix to the top-level directory
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}")
 
-# Install the built Python module to the top-level directory
-install(TARGETS _node_sim LIBRARY DESTINATION ".")
+# Install the extension module into the nodes/ package directory
+install(TARGETS _node_sim LIBRARY DESTINATION nodes)
 
 # Add a custom target for running cppcheck on the C++ source files
 # This will help in static code analysis

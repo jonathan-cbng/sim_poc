@@ -1,4 +1,5 @@
 -r requirements.txt
+-r nodes/requirements-dev.txt
 pre-commit~=4.2.0
 progressbar2~=4.5.0
 ruff~=0.12.5
