@@ -16,7 +16,7 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 
 # Set the source files
-set(SRC src/node.cpp src/rt.cpp src/ap.cpp src/node_sim_bindings.cpp)
+file(GLOB SRC cpp_src/*.cpp)
 
 # Create the Python module
 pybind11_add_module(_node_sim MODULE ${SRC})
