@@ -14,7 +14,7 @@ COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy source and build
-COPY . .
+COPY node_sim node_sim
 WORKDIR /app/node_sim
 RUN cmake -S . -B build && \
     cmake --build build --target cppcheck && \
@@ -31,13 +31,16 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy built extension from builder stage
 
-COPY src .
 RUN mkdir /app/node_sim
-COPY /node_sim/*.py node_sim
 COPY --from=builder /app/node_sim/*.so node_sim
+COPY --from=builder /app/node_sim/*.py node_sim
+COPY src src
+COPY utils utils
 COPY entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
+ENV PYTHONPATH=/app
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+#ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["python3", "utils/ap_demo.py"]
