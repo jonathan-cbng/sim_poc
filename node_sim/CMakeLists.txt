@@ -50,6 +50,6 @@ if(NOT CPPCHECK)
 endif()
 add_custom_target(
         cppcheck
-        COMMAND cppcheck --inconclusive --force --std=c++23 --quiet src/
+        COMMAND cppcheck --inconclusive --force --std=c++23 --quiet cpp_src/
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
