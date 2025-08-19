@@ -1,5 +1,5 @@
 # Builder stage
-FROM python:3.12-slim AS builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN cmake -S . -B build && \
     cmake --install build
 
 # Runtime stage
-FROM python:3.12-slim AS runtime
+FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
