@@ -207,5 +207,5 @@ address assigned to the container (which is the last RT in the container).
 ## Pre-requisites
 
 ```bash
-sudo apt-get update && apt-get install -y clang-format cppcheck
+sudo apt install -y clang-format clang-tidy cppcheck pybind11-dev
 ```

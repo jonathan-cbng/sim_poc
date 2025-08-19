@@ -5,11 +5,8 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    cppcheck \
-    python3-dev \
-    pybind11-dev \
+    build-essential cmake cppcheck clang-tidy \
+    python3-dev pybind11-dev \
     iproute2 curl procps \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,7 +15,11 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy source and build
 COPY . .
-RUN cmake -S . -B build && cmake --build build --target cppcheck && cmake --build build --config Release && cmake --install build
+WORKDIR /app/node_sim
+RUN cmake -S . -B build && \
+    cmake --build build --target cppcheck && \
+    cmake --build build --config Release && \
+    cmake --install build
 
 # Runtime stage
 FROM python:3.12-slim AS runtime
@@ -29,9 +30,11 @@ COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy built extension from builder stage
-COPY --from=builder /usr/local/lib/python3.12/site-packages/node_sim*.so /usr/local/lib/python3.12/site-packages/
 
-COPY src_py .
+COPY src .
+RUN mkdir /app/node_sim
+COPY /node_sim/*.py node_sim
+COPY --from=builder /app/node_sim/*.so node_sim
 COPY entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 

@@ -1,13 +1,8 @@
-from node_sim import _AP, _RT
+from node_sim import AP, RT
 
-
-class AP(_AP):
-    pass
-
-
-class RT(_RT):
-    pass
-
+# for i in range(30,0,-1):
+#     print(f"Sleeping {i}")
+#     time.sleep(1)
 
 # Create an AP instance
 ap_instance = AP(1000)

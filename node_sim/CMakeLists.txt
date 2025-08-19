@@ -1,6 +1,6 @@
 # CMake configuration for building the pybind11-based Python module from ap.cpp
-cmake_minimum_required(VERSION 3.12)
-project(ap_module)
+cmake_minimum_required(VERSION 3.15)
+project(_node_sim)
 
 # Force clang-tidy checking on the project
 set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=-std=c++23;-config-file=${CMAKE_SOURCE_DIR}/.clang-tidy")
@@ -16,32 +16,40 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 
 # Set the source files
-set(SRC src_cpp/node.cpp src_cpp/rt.cpp src_cpp/ap.cpp src_cpp/node_sim_bindings.cpp)
+set(SRC src/node.cpp src/rt.cpp src/ap.cpp src/node_sim_bindings.cpp)
 
 # Create the Python module
-pybind11_add_module(node_sim MODULE ${SRC})
+pybind11_add_module(_node_sim MODULE ${SRC})
 
 # Set compile options
-set_target_properties(node_sim PROPERTIES
+set_target_properties(_node_sim PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
 
+# Enable parallel LTO jobs (auto-detects number of cores)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
+
 # Link Python libraries if needed
 if(Python3_LIBRARIES)
-    target_link_libraries(node_sim PRIVATE Python3::Python)
+    target_link_libraries(_node_sim PRIVATE Python3::Python)
 endif()
 
-# Install the Python module
-# Optionally, you can specify the install directory for Python modules
-message(STATUS "Python3_SITEARCH: ${Python3_SITEARCH}")
-install(TARGETS node_sim
-        LIBRARY DESTINATION ${Python3_SITEARCH}
-)
+# Set install prefix to the top-level directory
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}")
+
+# Install the built Python module to the top-level directory
+install(TARGETS _node_sim LIBRARY DESTINATION ".")
+
 # Add a custom target for running cppcheck on the C++ source files
 # This will help in static code analysis
 find_program(CPPCHECK cppcheck)
 if(NOT CPPCHECK)
     message(FATAL_ERROR "cppcheck not found. Please install cppcheck to run static analysis.")
 endif()
+add_custom_target(
+        cppcheck
+        COMMAND cppcheck --inconclusive --force --std=c++23 --quiet src/
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)

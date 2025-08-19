@@ -1,10 +1,6 @@
 import logging
-import socket
-from typing import Annotated
 
-import httpx
-from fastapi import FastAPI, Query, Request
-from httpx import HTTPTransport
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 
 app = FastAPI()

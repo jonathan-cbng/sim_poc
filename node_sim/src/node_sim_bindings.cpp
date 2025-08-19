@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE (node_sim, m)
+PYBIND11_MODULE (_node_sim, m)
 {
   py::class_<Node, std::shared_ptr<Node> > (m, "_Node")
       .def (py::init<int> (), py::arg ("id") = Node::INVALID_ID)
