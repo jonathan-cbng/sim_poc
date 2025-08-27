@@ -69,9 +69,9 @@ Control API: http://localhost:8000
 | POST   | /ap               | Create & start an AP (optionally with initial RTs) |
 | GET    | /ap               | List statuses of all APs                           |
 | GET    | /ap/{ap_id}       | Get status for a single AP                         |
-| POST   | /ap/{ap_id}/rts   | Add RTs to an existing AP                          |
+| POST   | /ap/{ap_id}/rt    | Add RTs to an existing AP                          |
 | POST   | /ap/{ap_id}/alarm | Trigger AP-level or RT-level alarms                |
-| DELETE | /ap/{ap_id}       | Stop and remove an AP                              |
+| DELETE | /ap/{ap_id}       | Stop and remove an AP and all underlying RTs       |
 
 ### Example: Create an AP
 
