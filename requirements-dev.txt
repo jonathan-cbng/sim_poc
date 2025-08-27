@@ -4,3 +4,4 @@ pre-commit~=4.2.0
 progressbar2~=4.5.0
 pytest~=8.4.1
 ruff~=0.12.5
+coverage~=7.10.5

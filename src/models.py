@@ -5,7 +5,7 @@ from src.config import settings
 
 # Pydantic models
 class Node(BaseModel):
-    id: int
+    index: int
     str_id: str = ""
     heartbeat_seconds: int
 
@@ -19,7 +19,7 @@ class AP(Node):
 
 
 class APCreateRequest(BaseModel):
-    ap_id: int = -1
+    index: int = -1
     num_rts: int = settings.DEFAULT_RTS_PER_AP
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 

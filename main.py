@@ -2,6 +2,8 @@ import logging
 
 import uvicorn
 
+from src.app import get_app
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -9,5 +11,5 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
-    uvicorn.run("src.app:app", port=8000, workers=1)
+    uvicorn.run(get_app(), port=8000, workers=1)
     print("Done")
