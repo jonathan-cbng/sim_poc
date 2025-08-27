@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from settings import settings
+from src.config import settings
 
 
 # Pydantic models

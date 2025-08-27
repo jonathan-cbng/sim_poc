@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
+from src.ap_controller import aps
 from src.models import AP, RT, APCreateRequest, Message
 
-# In-memory storage for APs and RTs
-aps: dict[int, AP] = {}
 ap_router = APIRouter(prefix="/ap", tags=["ap"])
 
 

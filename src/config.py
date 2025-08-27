@@ -11,5 +11,8 @@ class Settings(BaseSettings):
     DEFAULT_HEARTBEAT_SECONDS: int = 30
     DEFAULT_RTS_PER_AP: int = 64
 
+    PUB_PORT: int = 5555  # Port for publishing commands to AP simulators
+    PULL_PORT: int = 5556  # Port for receiving messages from AP simulators
+
 
 settings = Settings()
