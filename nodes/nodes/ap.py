@@ -1,4 +1,4 @@
-from ._node_sim import _AP
+from .node_accel import _AP
 
 
 class AP(_AP):

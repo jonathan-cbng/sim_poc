@@ -36,5 +36,5 @@ async def which_ip(request: Request) -> Route:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="::", port=8000, workers=2)
+    uvicorn.run("main:app", host="::", port=8000, workers=1)
     print("Done")

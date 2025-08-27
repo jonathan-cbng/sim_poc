@@ -33,11 +33,11 @@ RUN pip install /tmp/*.whl
 
 COPY src src
 COPY utils utils
-COPY entrypoint.sh entrypoint.sh
+COPY experimental/multi-ip/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 ENV PYTHONPATH=/app
 
-#ENTRYPOINT ["/app/entrypoint.sh"]
-ENTRYPOINT ["python3", "utils/ap_demo.py"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+#ENTRYPOINT ["python3", "utils/ap_demo.py"]

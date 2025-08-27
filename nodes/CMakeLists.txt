@@ -1,6 +1,6 @@
 # CMake configuration for building the pybind11-based Python module from ap.cpp
 cmake_minimum_required(VERSION 3.15)
-project(_node_sim)
+project(node_accel)
 
 # Force clang-tidy checking on the project
 set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=-std=c++23;-config-file=${CMAKE_SOURCE_DIR}/.clang-tidy")
@@ -19,10 +19,10 @@ find_package(pybind11 CONFIG REQUIRED)
 file(GLOB SRC cpp_src/*.cpp)
 
 # Create the Python module
-pybind11_add_module(_node_sim MODULE ${SRC})
+pybind11_add_module(node_accel MODULE ${SRC})
 
 # Set compile options
-set_target_properties(_node_sim PROPERTIES
+set_target_properties(node_accel PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
@@ -33,14 +33,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
 
 # Link Python libraries if needed
 if(Python3_LIBRARIES)
-    target_link_libraries(_node_sim PRIVATE Python3::Python)
+    target_link_libraries(node_accel PRIVATE Python3::Python)
 endif()
 
 # Set install prefix to the top-level directory
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}")
 
 # Install the extension module into the nodes/ package directory
-install(TARGETS _node_sim LIBRARY DESTINATION nodes)
+install(TARGETS node_accel LIBRARY DESTINATION nodes)
 
 # Add a custom target for running cppcheck on the C++ source files
 # This will help in static code analysis

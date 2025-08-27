@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 
 NUM_APS = 50
-NUM_RTS = 1500
+NUM_RTS = 64
 BASE_IPV4 = "10.{}.0.2"
 BASE_IPV4_SUBNET = "10.{}.0.0/16"
 BASE_IPV6 = "2001:db8:abcd:{}::2"
@@ -38,6 +38,7 @@ def write_docker_compose(num_aps: int, num_rts: int, output_file: Path):
                 "timeout": "3s",
                 "retries": 3,
                 "start_period": "600s",
+                "interval": "60s",
             },
         }
 

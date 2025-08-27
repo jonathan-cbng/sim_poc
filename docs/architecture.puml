@@ -1,0 +1,36 @@
+@startuml C4_Elements
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "User/Postman", "A user of the simulator")
+
+System_Boundary(ctrl, "Control Layer") {
+    Component(controller, "Controller (FastAPI)", "Python/FastAPI", "REST API and process management. Monitors ZeroMQ PULL socket in a FastAPI background task.")
+    Component(pub_socket, "PUB socket", "ZeroMQ PUB", "Binds to port for commands to APs (topics)")
+    Component(pull_socket, "PULL socket", "ZeroMQ PULL", "Binds to port for responses from APs. Monitored by background task.")
+}
+
+System_Boundary(sim_layer, "Execution Layer") {
+    System_Boundary(ap_sys,"AP1 Simulator (python process)") {
+        Component(ap, "AP", "Python object", "Simulated AP")
+        Component(rt1, "RT1", "Python object", "Simulated RT")
+        Component(rt2, "RT2", "Python object", "Simulated RT")
+        Component(rtn, "RTn", "Python object", "Simulated RT")
+        Component(sub_socket, "SUB socket", "ZeroMQ SUB", "Connects to Controller's PUB, subscribes to own topic (`AP0001`)")
+        Component(push_socket, "PUSH socket", "ZeroMQ PUSH", "Connects to Controller's PULL, sends responses")
+    }
+}
+
+
+Rel(user, controller, "Uses", "HTTP (REST API)")
+Rel(controller, pub_socket, "Sends commands via", "ZeroMQ PUB")
+Rel(controller, pull_socket, "Receives responses via", "ZeroMQ PULL (background task)")
+Rel(pub_socket, sub_socket, "Publishes commands to", "ZeroMQ PUB/SUB (topic = `AP0001`)")
+Rel(push_socket, pull_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
+Rel(ap, rt1, "Controls")
+Rel(ap, rt2, "Controls")
+Rel(ap, rtn, "Controls")
+Rel(sub_socket,ap, "Receives commands from", "ZeroMQ PUB/SUB")
+Rel_U(ap, push_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
+HIDE_STEREOTYPE()
+
+@enduml

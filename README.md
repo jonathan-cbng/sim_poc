@@ -3,13 +3,23 @@
 A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
 Application Under Test (AUT).
 
-Technology stack:
+## Technology stack
 
-- Control Plane: FastAPI
-- Persistence: SQLite + SQLAlchemy (with dependency-injected session)
-- Worker: Single process hosting many AP actors via asyncio
-- IPC: In-memory multiprocessing queues (no external broker)
-- Outbound HTTP: aiohttp sessions (per AP, optional IPv6 source binding)
+- **Control Plane:** FastAPI (Python)
+- **Process Management:**
+  - Local: Python multiprocessing, 1 process per AP
+  - Remote: paramiko/fabric (SSH-based process launch) (for future study)
+- **Inter-process Communication:** ZeroMQ (PUB/SUB for commands, PUSH/PULL for responses), served from the control API
+  server
+- **AP Simulator:** Python process simulating a single AP and its RTs. Each AP process runs:
+  - **Async Runtime:** asyncio event loop
+  - **AP Actor:** Manages AP heartbeat, registration, and AP-level alarms
+  - **RT Actors:** Each RT is an asyncio Task managed by the AP actor, handling registration, periodic status updates,
+    and RT-level alarms
+- **Outbound HTTP:** aiohttp sessions inside each AP simulator process
+
+Scripting/configuration of this system should be possible using postman, but there should be a way of loading a
+pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs in one go.
 
 ## Capabilities
 
@@ -54,22 +64,22 @@ Control API: http://localhost:8000
 
 ## Core Endpoints
 
-| Method | Path               | Purpose                                            |
-| ------ | ------------------ | -------------------------------------------------- |
-| POST   | /aps               | Create & start an AP (optionally with initial RTs) |
-| GET    | /aps               | List statuses of all APs                           |
-| GET    | /aps/{ap_id}       | Get status for a single AP                         |
-| POST   | /aps/{ap_id}/rts   | Add RTs to an existing AP                          |
-| POST   | /aps/{ap_id}/alarm | Trigger AP-level or RT-level alarms                |
-| DELETE | /aps/{ap_id}       | Stop and remove an AP                              |
+| Method | Path              | Purpose                                            |
+| ------ | ----------------- | -------------------------------------------------- |
+| POST   | /ap               | Create & start an AP (optionally with initial RTs) |
+| GET    | /ap               | List statuses of all APs                           |
+| GET    | /ap/{ap_id}       | Get status for a single AP                         |
+| POST   | /ap/{ap_id}/rts   | Add RTs to an existing AP                          |
+| POST   | /ap/{ap_id}/alarm | Trigger AP-level or RT-level alarms                |
+| DELETE | /ap/{ap_id}       | Stop and remove an AP                              |
 
 ### Example: Create an AP
 
 ```bash
-curl -X POST http://localhost:8000/aps \
+curl -X POST http://localhost:8000/ap \
   -H "Content-Type: application/json" \
   -d '{
-    "ap_id": "ap-1",
+    "ap_id": "1",
     "aut_base_url": "http://localhost:8080",
     "heartbeat_seconds": 10,
     "rt_count": 5
@@ -79,7 +89,7 @@ curl -X POST http://localhost:8000/aps \
 ### Add RTs
 
 ```bash
-curl -X POST http://localhost:8000/aps/ap-1/rts \
+curl -X POST http://localhost:8000/ap/{ap_id}/rts \
   -H "Content-Type: application/json" \
   -d '{"add": 3}'
 ```
@@ -89,7 +99,7 @@ curl -X POST http://localhost:8000/aps/ap-1/rts \
 AP-level:
 
 ```bash
-curl -X POST http://localhost:8000/aps/ap-1/alarm \
+curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"ap"}'
 ```
@@ -97,7 +107,7 @@ curl -X POST http://localhost:8000/aps/ap-1/alarm \
 25% of RTs:
 
 ```bash
-curl -X POST http://localhost:8000/aps/ap-1/alarm \
+curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"rt","percent":25}'
 ```
@@ -105,7 +115,7 @@ curl -X POST http://localhost:8000/aps/ap-1/alarm \
 Specific RT IDs:
 
 ```bash
-curl -X POST http://localhost:8000/aps/ap-1/alarm \
+curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"rt","rt_ids":[0,2,5]}'
 ```
@@ -113,45 +123,7 @@ curl -X POST http://localhost:8000/aps/ap-1/alarm \
 ### Delete AP
 
 ```bash
-curl -X DELETE http://localhost:8000/aps/ap-1
-```
-
-## AUT Endpoint Expectations (Stubbed)
-
-The simulator will attempt POST requests to (adjust or mock as needed):
-
-- {aut_base_url}/ap/register
-- {aut_base_url}/ap/heartbeat
-- {aut_base_url}/ap/alarm
-- {aut_base_url}/rt/register
-- {aut_base_url}/rt/alarm
-
-Return any 2xx to mark success.
-
-## Testing: Overriding the DB
-
-```python
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from control.app import app
-from control.db import Base, get_db
-
-engine = create_engine("sqlite:///./test_sim.db", connect_args={"check_same_thread": False})
-TestingSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-Base.metadata.create_all(bind=engine)
-
-
-def override_db():
-    db = TestingSession()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_db
-client = TestClient(app)
+curl -X DELETE http://localhost:8000/ap/{ap_id}
 ```
 
 ## Scaling Roadmap

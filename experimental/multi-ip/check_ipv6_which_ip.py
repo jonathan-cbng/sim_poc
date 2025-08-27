@@ -17,7 +17,7 @@ logger = logging.getLogger("test_ipv6_which_ip")
 
 IPV6_PREFIX = "2001:db8:abcd"
 NUM_APS = 50
-NUM_RTS = 1500
+NUM_RTS = 64
 
 
 async def check_which_ip(ipv6_addr: str, client: httpx.AsyncClient, port: int = 8000, timeout: float = 2.0) -> bool:
