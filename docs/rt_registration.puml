@@ -1,0 +1,67 @@
+@startuml
+participant "Node Simulator" as NODE_SIM
+participant "Northbound" as NBAPI
+participant "Southbound" as SBAPI
+database "Database" as DB
+== Add and register RT <rt_id> to an AP ==
+NODE_SIM -> NBAPI++ : POST /api/v1/node/rt/magpie-rabbit-thin
+note right of NBAPI
+  Headers:
+    Content-Type: application/json
+    Authorization: Bearer <user_jwt>
+  Body: {
+    "auid": "magpie-rabbit-thin",         // must match the URL path parameter
+    "parent_auid": "HUB_AUID",            // AUID of the parent AP (i.e. the hub name)
+    "id": "RT-magpie-rabbit-thin",        // unique node ID
+    "node_status": "Planned",             // e.g. Planned, New, Active
+    "node_priority": "Bronze",            // e.g. Gold, Silver, Bronze
+    ...
+  }
+end note
+NBAPI -> DB: Write new RT record into DB
+NODE_SIM <-- NBAPI-- : OK
+
+' RT registration process
+NODE_SIM -> SBAPI++ : POST /api/v1/magpie-rabbit-thin/rt-auth
+note right of SBAPI
+This just creates a bearer token for subsequent requests  - the auid is still "magpie-rabbit-thin" at this point
+  Headers:
+    Content-Type: application/json
+  Body: {
+    "sim_ki": "",
+    "sim_opc": "",
+    "nms_installer_key": "secret",
+    "device_key": "hello"
+  }
+end note
+NODE_SIM<--SBAPI--: 200 OK
+note right of NODE_SIM
+  Response Body: {
+    "access_token": "<bearer_token>",
+    "expiry_date": "2025-10-29 08:54:39"
+  }
+end note
+
+NODE_SIM -> SBAPI++ : POST /api/v1/magpie-rabbit-thin/rt-registration
+note right of SBAPI
+  Headers:
+    Authorization: Bearer <bearer_token>
+    Content-Type: application/json
+  Body: {
+    "params": [
+      {"name": "rt.info.imei", "type": "", "value": "XYZ456"},
+      {"name": "rt.nms.rt_access_token", "type": "", "value": "test_access_token"}
+    ]
+  }
+end note
+SBAPI<->DB: Write IMEI to node's auid, replacing "magpie-rabbit-thin"
+NODE_SIM<--SBAPI--: 200 OK
+
+== RT Heartbeat ==
+NODE_SIM -> SBAPI++ : POST /api/v1/XYZ456/heartbeat
+note right of SBAPI
+  Headers:
+    Authorization: Bearer <bearer_token>
+end note
+NODE_SIM<--SBAPI--: 200 OK
+@enduml

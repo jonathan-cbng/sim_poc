@@ -1,0 +1,19 @@
+@startuml
+participant "Node Simulator" as NODE_SIM
+participant "Northbound" as NBAPI
+database "Database" as DB
+== Add Hub ==
+NODE_SIM->NBAPI++ : POST /api/v1/node/hub/HUB_AUID
+note right of NBAPI
+  Headers:
+    Content-Type: application/json
+  Body: {
+    "csni": "VERIZ001NW001",
+    "auid": "HUB_AUID", (must match the URL path parameter)
+    ...
+    "node_status": "Planned"
+  }
+end note
+NBAPI->DB: Write new Hub record into DB
+NODE_SIM<--NBAPI-- : OK
+@enduml

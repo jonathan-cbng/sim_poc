@@ -1,0 +1,63 @@
+@startuml
+participant "Node Simulator" as NODE_SIM
+participant "Northbound" as NBAPI
+participant "Southbound" as SBAPI
+database "Database" as DB
+== NB: Create AP node entry (unregistered) ==
+NODE_SIM -> NBAPI++ : POST /api/v1/node/ap/woman-olive-tomato
+note right of NBAPI
+  Headers:
+    Content-Type: application/json
+  Body: {
+    "auid": "woman-olive-tomato",
+    "allocated_auid": "No",
+    "id": "AP-woman-olive-tomato",
+    "name": "AP woman-olive-tomato",
+    "parent_auid": "HUB_AUID", (this points to the hub)
+    "node_status": "Planned"
+    ...
+  }
+end note
+NODE_SIM<--NBAPI-- : OK  (secret_registered=False)
+== SB: Create a secret for AP registration  ==
+NODE_SIM->SBAPI++: POST /ap/register_secret/
+note over SBAPI
+This registers a secret for this AP
+  Headers:
+    Content-Type: application/json
+    ap_auid: <ap_id>
+    secret: <ap-specific_secret>
+  Body:
+end note
+SBAPI->DB: Store secret for AUID in DB
+NODE_SIM<--SBAPI--: 200 OK
+== SB: Register AP ==
+NODE_SIM -> SBAPI++: POST /ap/register_candidate/
+note right of SBAPI
+  Headers:
+    Content-Type: application/json
+    ap_auid: <ap_id>
+    secret: <ap-specific_secret>
+  Body: {
+      "csi": "VERIZ001",
+      "installer_key": "secret",
+      "chosen_auid": "woman-olive-tomato"
+    }
+end note
+SBAPI<->DB: Verify secret for AUID in DB and installer_key is in list of valid keys for CSI
+SBAPI->DB: Update node status to "Registered" and set auid to the gnodebid
+NODE_SIM<--SBAPI--: 200 OK
+
+== SB: AP Heartbeat ==
+NODE_SIM -> SBAPI++ : POST /gnodeb/heartbeat
+note right of SBAPI
+  Headers:
+    Content-Type: application/json
+    gnodebid: ABC123
+    secret: SECRET
+  Body: {
+    "UEs": []
+  }
+end note
+NODE_SIM<--SBAPI--: 200 OK
+@enduml
