@@ -1,4 +1,8 @@
+import time
+
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
+
+from src.common import APState
 
 
 # Helper to create a network and return its index
@@ -37,6 +41,19 @@ def test_create_ap(test_client):
     assert resp.status_code == HTTP_201_CREATED
     ap_id = resp.json()
     assert isinstance(ap_id, int)
+    # Wait for AP to reach CONNECTED state
+    timeout = 1.0
+    interval = 0.1
+    start = time.time()
+    while True:
+        status_resp = test_client.get(f"/network/{network_idx}/hub/{hub_idx}/ap/{ap_id}")
+        assert status_resp.status_code == HTTP_200_OK
+        ap = status_resp.json()
+        if ap.get("state") == APState.CONNECTED:
+            break
+        if time.time() - start > timeout:
+            raise AssertionError(f"AP did not reach CONNECTED state. last state: {ap.get('state')}")
+        time.sleep(interval)
 
 
 # Test: List all APs
