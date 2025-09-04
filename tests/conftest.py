@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from src.app import get_app
 from src.config import settings
+from src.manager_network import nms
 
 
 @pytest.fixture(scope="session")
@@ -47,3 +48,8 @@ async def pusher(zmq_ctx):
     push.connect(f"tcp://127.0.0.1:{settings.PULL_PORT}")
     yield push
     push.close()
+
+
+@pytest.fixture(autouse=True)
+def reset_ctrls():
+    nms.children.clear()

@@ -9,14 +9,26 @@ fixtures and TestClient instances.
 """
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
+import urllib3
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
-from src.ap_controller import ap_ctrl
-from src.ap_routes import ap_router
 from src.config import settings
+from src.controller_ap import ap_ctrl
+from src.routes_ap import ap_router
+from src.routes_hub import hub_router
+from src.routes_network import network_router
+
+if settings.SSL_CERT is None:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logging.basicConfig(
+    level=logging.getLevelName(settings.LOG_LEVEL),
+    format="%(levelname)s: %(asctime)s %(filename)s - %(message)s",
+)
 
 
 @asynccontextmanager
@@ -30,6 +42,8 @@ async def lifespan(app: FastAPI):
 
 def get_app():
     app = FastAPI(lifespan=lifespan)
+    app.include_router(network_router)
+    app.include_router(hub_router)
     app.include_router(ap_router)
 
     @app.get("/", include_in_schema=False)
