@@ -27,23 +27,37 @@ class APController:
             match event:
                 case "ap_connected":
                     self.handle_ap_connected(msg)
+                case "ap_registered":
+                    self.handle_ap_registered(msg)
                 case _:
                     logging.warning(f"Unknown event type: {event}")
 
-    def handle_ap_connected(self, msg):
+    @staticmethod
+    def get_ap_from_msg(msg):
         try:
             net_idx = int(msg["net"])
             hub_idx = int(msg["hub"])
             ap_idx = int(msg["ap"])
-        except (KeyError, ValueError, TypeError) as e:
-            logging.warning(f"ap_connected event missing or invalid net/hub/ap fields: {msg} ({e})")
-            return
-        try:
             ap = nms.get_network(net_idx).get_hub(hub_idx).get_ap(ap_idx)
-            ap.state = APState.CONNECTED
-            logging.info(f"AP connected: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
+            return ap, net_idx, hub_idx, ap_idx
         except Exception as e:
-            logging.warning(f"Could not mark AP as connected for net={net_idx}, hub={hub_idx}, ap={ap_idx}: {e}")
+            logging.warning(f"Message missing or invalid net/hub/ap fields: {msg} ({e})")
+            return None
+
+    def handle_ap_connected(self, msg):
+        ap, net_idx, hub_idx, ap_idx = self.get_ap_from_msg(msg)
+        ap.state = APState.CONNECTED
+        logging.info(f"AP connected: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
+        # Send register request to AP via PUB socket
+        register_msg = json.dumps({"event": "register_ap_to_nms"})
+        pub_message = f"{ap._tag} {register_msg}"
+        self.zmq_pub.send_string(pub_message)
+        logging.info(f"Sent register_ap_to_nms to {ap._tag}: {register_msg}")
+
+    def handle_ap_registered(self, msg):
+        ap, net_idx, hub_idx, ap_idx = self.get_ap_from_msg(msg)
+        logging.info(f"AP registered: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
+        ap.state = APState.REGISTERED
 
     def setup_zmq(self, app, pub_port, pull_port):
         """

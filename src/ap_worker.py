@@ -29,6 +29,27 @@ class APWorker:
         self.push_sock = self.ctx.socket(zmq.PUSH)
         self.push_sock.connect(pull_addr)
 
+    async def execute_command(self, command: dict):
+        """
+        Execute a command received from the controller.
+        This is a stub implementation; in a real AP, this would perform actions.
+        """
+        if not command:
+            logging.warning(f"[AP Worker {self.tag}] No command to execute.")
+            return
+        event = command.get("event")
+        match event:
+            case "register_ap_to_nms":
+                logging.info(f"[AP Worker {self.tag}] Registering AP to NMS (stub).")
+                # Simulate sending a registration confirmation back
+                response = json.dumps(
+                    {"event": "ap_registered", "net": self.network_idx, "hub": self.hub_idx, "ap": self.ap_idx}
+                )
+                await self.push_sock.send_string(response)
+            case _:
+                logging.warning(f"[AP Worker {self.tag}] Unknown command event: {event}")
+        return
+
     def decode_message(self, message: str):
         """
         Process a message received from the controller.
@@ -37,13 +58,13 @@ class APWorker:
         try:
             json_part = message.split(" ", 1)[1]
             data = json.loads(json_part)
-            logging.info(f"[AP Worker {self.tag}] recevied message': {data}")
+            logging.info(f"[AP Worker {self.tag}] received message': {data}")
             return data
-        except ValueError:
-            logging.error(f"[AP Worker {self.tag}] Malformed message (no space found): {message}")
-            return None
         except json.JSONDecodeError as e:
             logging.error(f"[AP Worker {self.tag}] JSON decode error: {e} in message: {message}")
+            return None
+        except ValueError:
+            logging.error(f"[AP Worker {self.tag}] Malformed message (no space found): {message}")
             return None
 
     async def read_loop(self):
@@ -55,7 +76,8 @@ class APWorker:
             try:
                 message = await self.pub_sock.recv_string()
                 logging.debug(f"[AP Worker {self.tag}] Received command: {message}")
-                self.decode_message(message)
+                command = self.decode_message(message)
+                await self.execute_command(command)
             except Exception as e:
                 logging.error(f"[AP Worker {self.tag}] Error receiving command: {e}")
                 await asyncio.sleep(1)

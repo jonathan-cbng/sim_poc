@@ -66,9 +66,12 @@ class AP(Node):
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 
     _worker: subprocess.Popen | None = PrivateAttr(default=None)
+    _tag: str = PrivateAttr(default=None)
 
     def start_worker(self, network_idx: int, hub_idx: int, ap_idx: int) -> None:
         # Spawn AP worker process
+        self._tag = f"NET{network_idx:04d}HUB{hub_idx:04d}AP{ap_idx:04d}"
+
         self._worker = subprocess.Popen(
             [
                 "python",
