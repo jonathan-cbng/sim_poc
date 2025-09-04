@@ -1,47 +1,12 @@
 import logging
 
 import zmq.asyncio
-from fastapi import HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
-
-from src.models import AP, RT, APCreateRequest
 
 
 class APController:
-    aps: dict[int, AP] = {}
     zmq_ctx: zmq.asyncio.Context = None
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
-
-    async def add_ap(self, req: APCreateRequest) -> int:
-        """
-        Create & start an AP (optionally with initial RTs). If req.ap_id is
-        -1, then a new ID will be assigned automatically. Once added to the local list,
-        we start the AP simulator process.
-        """
-        index = req.index
-        if index < 0:
-            try:
-                index = max(self.aps.keys()) + 1
-            except ValueError:  # if aps is empty
-                index = 0
-        elif index in self.aps:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"AP {index} already exists")
-        rts = [RT(index=i, heartbeat_seconds=req.heartbeat_seconds) for i in range(req.num_rts)]
-        new_ap = AP(index=index, heartbeat_seconds=req.heartbeat_seconds, rts=rts)
-        self.aps[index] = new_ap
-        logging.info("Created AP %d with %d RTs", index, req)
-        return index
-
-    async def remove_ap(self, id):
-        """
-        Stop and remove an AP and all underlying RTs. Once the AP has indicated it has stopped,
-        then the handling process can also be terminated.
-        """
-        if id not in self.aps:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="AP not found")
-        del self.aps[id]
-        logging.info("Removed AP %d", id)
 
     async def listener(self):
         """
