@@ -29,7 +29,24 @@ class APWorker:
         self.push_sock = self.ctx.socket(zmq.PUSH)
         self.push_sock.connect(pull_addr)
 
-    async def run(self):
+    def decode_message(self, message: str):
+        """
+        Process a message received from the controller.
+        Expected format: '<subscriber_tag> <json_message>'
+        """
+        try:
+            json_part = message.split(" ", 1)[1]
+            data = json.loads(json_part)
+            logging.info(f"[AP Worker {self.tag}] recevied message': {data}")
+            return data
+        except ValueError:
+            logging.error(f"[AP Worker {self.tag}] Malformed message (no space found): {message}")
+            return None
+        except json.JSONDecodeError as e:
+            logging.error(f"[AP Worker {self.tag}] JSON decode error: {e} in message: {message}")
+            return None
+
+    async def read_loop(self):
         # Send 'connected' message with separate fields
         msg = json.dumps({"event": "ap_connected", "net": self.network_idx, "hub": self.hub_idx, "ap": self.ap_idx})
         await self.push_sock.send_string(msg)
@@ -37,7 +54,8 @@ class APWorker:
         while True:
             try:
                 message = await self.pub_sock.recv_string()
-                print(f"[AP Worker {self.tag}] Received command: {message}")
+                logging.debug(f"[AP Worker {self.tag}] Received command: {message}")
+                self.decode_message(message)
             except Exception as e:
                 logging.error(f"[AP Worker {self.tag}] Error receiving command: {e}")
                 await asyncio.sleep(1)
@@ -52,4 +70,4 @@ if __name__ == "__main__":
     parser.add_argument("pull_addr", type=str)
     args = parser.parse_args()
     worker = APWorker(args.network_idx, args.hub_idx, args.ap_idx, args.pub_addr, args.pull_addr)
-    asyncio.run(worker.run())
+    asyncio.run(worker.read_loop())

@@ -1,15 +1,19 @@
 import logging
 import uuid
 
+import httpx
 from pydantic import Field
+from starlette.status import HTTP_200_OK, HTTP_300_MULTIPLE_CHOICES
 
 from src.common import Node
+from src.config import settings
 from src.manager_hub import HubManager
 from src.models_api import APCreateRequest, HubCreateRequest, NetworkCreateRequest
+from src.models_nms_api import AuthInfo
 
 
 class NetworkManager(Node):
-    csni: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    csi: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     children: dict[int, HubManager] = Field(default_factory=dict)
 
@@ -19,7 +23,9 @@ class NetworkManager(Node):
         # Add required number of APs
         for _ in range(req.num_aps):
             ap_req = APCreateRequest(
-                hub_index=index, num_rts=req.num_rts_per_ap, heartbeat_seconds=req.heartbeat_seconds
+                num_rts=req.num_rts_per_ap,
+                heartbeat_seconds=req.heartbeat_seconds,
+                rt_heartbeat_seconds=req.rt_heartbeat_seconds,
             )
             await hub_mgr.add_ap(ap_req)
 
@@ -43,11 +49,10 @@ class NMSManager(Node):
     async def add_network(self, req: NetworkCreateRequest, index=-1) -> int:
         index = self.get_index(index)  # Will throw HTTPError if already exists
         # Create NetworkManager instance
-        net_mgr = NetworkManager(index=index, csni=req.csni)
+        net_mgr = NetworkManager(index=index, csi=req.csi)
         # Add required number of hubs
-        for i in range(req.hubs):
+        for _ in range(req.hubs):
             hub_req = HubCreateRequest(
-                index=i,
                 auid=str(uuid.uuid4()),
                 num_aps=req.aps_per_hub,
                 num_rts_per_ap=req.rts_per_ap,
@@ -66,6 +71,39 @@ class NMSManager(Node):
 
     def get_networks(self) -> dict[int, NetworkManager]:
         return self.children
+
+    async def register_network_northbound(self, req: NetworkCreateRequest, csi: str) -> tuple[str, bool]:
+        """
+        Register a network with the real northbound API.
+        Args:
+            req (NetworkCreateRequest): The network creation request body.
+            csi (str): Customer CSI string.
+        Returns:
+            tuple[str, bool]: (response_text, success)
+        """
+        url = f"{settings.NBAPI_URL}/api/v1/network/csi/{csi}"
+        headers = {"Bearer": AuthInfo().jwt()}
+        verify = getattr(settings, "VERIFY_SSL_CERT", True)
+        timeout = 60.0
+        async with httpx.AsyncClient(verify=verify, timeout=timeout) as client:
+            try:
+                res = await client.post(
+                    url,
+                    json=req.model_dump(),
+                    headers=headers,
+                )
+                response_text = res.text
+                if HTTP_200_OK <= res.status_code < HTTP_300_MULTIPLE_CHOICES:
+                    logging.debug(f"Registered network northbound: {response_text}")
+                    return response_text, True
+                else:
+                    logging.info(
+                        f"Error registering network northbound. Status: {res.status_code}. Response: {response_text}"
+                    )
+                    return response_text, False
+            except Exception as e:
+                logging.info(f"Exception posting to northbound: {e}")
+                return str(e), False
 
 
 nms = NMSManager(index=0)  # Singleton instance of the network manager - this is the top-level data structure

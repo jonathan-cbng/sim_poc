@@ -1,11 +1,9 @@
 import logging
-import subprocess
 import uuid
 
 from pydantic import Field
 
 from src.common import AP, RT, Node
-from src.config import settings
 from src.models_api import APCreateRequest
 
 
@@ -13,7 +11,7 @@ class HubManager(Node):
     children: dict[int, AP] = {}
     auid: str = Field(default_factory=uuid.uuid4)
 
-    async def add_ap(self, req: APCreateRequest, index=-1) -> AP:
+    async def add_ap(self, req: APCreateRequest, ap_idx=-1) -> AP:
         """
         Create & start an AP (optionally with initial RTs). If req.ap_id is
         -1, then a new ID will be assigned automatically. Once added to the local list,
@@ -24,30 +22,16 @@ class HubManager(Node):
         :raises HTTPException: If the specified index already exists
 
         """
-        index = self.get_index(index)  # Will throw HTTPError if already exists
-        new_ap = AP(index=index, parent_index=self.index, heartbeat_seconds=req.heartbeat_seconds)
+        ap_idx = self.get_index(ap_idx)  # Will throw HTTPError if already exists
+        new_ap = AP(index=ap_idx, parent_index=self.index, heartbeat_seconds=req.heartbeat_seconds)
         rts = {
             i: RT(index=i, parent_index=new_ap.index, heartbeat_seconds=req.heartbeat_seconds)
             for i in range(req.num_rts)
         }
         new_ap.children = rts
-        self.children[index] = new_ap
-        logging.info("Created AP %d with %d RTs", index, req.num_rts)
-        # Spawn AP worker process
-        pub_addr = f"tcp://127.0.0.1:{settings.PUB_PORT}"
-        pull_addr = f"tcp://127.0.0.1:{settings.PULL_PORT}"
-        subprocess.Popen(
-            [
-                "python",
-                "-m",
-                "src.ap_worker",
-                str(self.parent_index),  # network_idx
-                str(self.index),  # hub_idx
-                str(index),  # ap_idx
-                pub_addr,
-                pull_addr,
-            ]
-        )
+        self.children[ap_idx] = new_ap
+        logging.info("Created AP %d with %d RTs", ap_idx, req.num_rts)
+        new_ap.start_worker(self.parent_index, self.index, ap_idx)
         return new_ap
 
     async def remove_ap(self, id):

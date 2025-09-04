@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 
 
 def get_app():
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI(lifespan=lifespan, title="NMS network simulator", version="0.0.1")
     app.include_router(network_router)
     app.include_router(hub_router)
     app.include_router(ap_router)
