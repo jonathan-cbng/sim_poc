@@ -1,5 +1,6 @@
 import logging
 import uuid
+from enum import Enum, auto
 from typing import Any
 
 from fastapi import HTTPException
@@ -51,6 +52,13 @@ class RT(Node):
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 
 
+class APState(Enum):
+    STARTING = auto()
+    CONNECTED = auto()
+    REGISTERED = auto()
+
+
 class AP(Node):
+    state: APState = APState.STARTING
     auid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS

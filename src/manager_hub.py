@@ -1,9 +1,11 @@
 import logging
+import subprocess
 import uuid
 
 from pydantic import Field
 
 from src.common import AP, RT, Node
+from src.config import settings
 from src.models_api import APCreateRequest
 
 
@@ -31,6 +33,21 @@ class HubManager(Node):
         new_ap.children = rts
         self.children[index] = new_ap
         logging.info("Created AP %d with %d RTs", index, req.num_rts)
+        # Spawn AP worker process
+        pub_addr = f"tcp://127.0.0.1:{settings.PUB_PORT}"
+        pull_addr = f"tcp://127.0.0.1:{settings.PULL_PORT}"
+        subprocess.Popen(
+            [
+                "python",
+                "-m",
+                "src.ap_worker",
+                str(self.parent_index),  # network_idx
+                str(self.index),  # hub_idx
+                str(index),  # ap_idx
+                pub_addr,
+                pull_addr,
+            ]
+        )
         return new_ap
 
     async def remove_ap(self, id):

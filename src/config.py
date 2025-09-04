@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     DEFAULT_APS_PER_HUB: int = 10
     DEFAULT_RTS_PER_AP: int = 64
 
-    PUB_PORT: int = 5555  # Port for publishing commands to AP simulators
-    PULL_PORT: int = 5556  # Port for receiving messages from AP simulators
+    PUB_PORT: int = 12500  # Port for publishing commands to AP simulators
+    PULL_PORT: int = 12501  # Port for receiving messages from AP simulators
 
     SECRET_KEY: str = "Hello"
     ALGORITHM: str = "HS256"

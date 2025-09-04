@@ -1,6 +1,10 @@
+import json
 import logging
 
 import zmq.asyncio
+
+from src.common import APState
+from src.manager_network import nms
 
 
 class APController:
@@ -13,8 +17,33 @@ class APController:
         Listens for incoming messages on the PULL socket and processes them.
         """
         while True:
-            msg = await self.zmq_pull.recv()
-            logging.debug("Received message: `%s`", msg)
+            msg_bytes = await self.zmq_pull.recv()
+            try:
+                msg = json.loads(msg_bytes)
+            except Exception as e:
+                logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
+                continue
+            event = msg.get("event")
+            match event:
+                case "ap_connected":
+                    self.handle_ap_connected(msg)
+                case _:
+                    logging.warning(f"Unknown event type: {event}")
+
+    def handle_ap_connected(self, msg):
+        try:
+            net_idx = int(msg["net"])
+            hub_idx = int(msg["hub"])
+            ap_idx = int(msg["ap"])
+        except (KeyError, ValueError, TypeError) as e:
+            logging.warning(f"ap_connected event missing or invalid net/hub/ap fields: {msg} ({e})")
+            return
+        try:
+            ap = nms.get_network(net_idx).get_hub(hub_idx).get_ap(ap_idx)
+            ap.state = APState.CONNECTED
+            logging.info(f"AP connected: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
+        except Exception as e:
+            logging.warning(f"Could not mark AP as connected for net={net_idx}, hub={hub_idx}, ap={ap_idx}: {e}")
 
     def setup_zmq(self, app, pub_port, pull_port):
         """

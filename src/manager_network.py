@@ -15,13 +15,14 @@ class NetworkManager(Node):
 
     async def add_hub(self, net_index: int, req: HubCreateRequest, index=-1) -> int:
         index = self.get_index(index)
-        hub_mgr = HubManager(index=index, auid=req.auid, net_index=net_index)
+        hub_mgr = HubManager(index=index, auid=req.auid, parent_index=net_index)
         # Add required number of APs
         for _ in range(req.num_aps):
             ap_req = APCreateRequest(
                 hub_index=index, num_rts=req.num_rts_per_ap, heartbeat_seconds=req.heartbeat_seconds
             )
             await hub_mgr.add_ap(ap_req)
+
         self.children[index] = hub_mgr
         return index
 
