@@ -38,7 +38,7 @@ class APWorker(AP):
         msg = msg if isinstance(msg, Message) else Message(msg)
         payload = f"{self.tag:} {msg.model_dump_json()}"  # not strictly necessary but makes it symmetric with pub
         await self.push_sock.send_string(payload)
-        logging.info("Tx %s->controller: %r", self.tag, msg.root)
+        logging.debug("Tx %s->controller: %r", self.tag, msg.root)
 
     async def process_register_req(self, command: APRegisterReq):
         logging.info("%s: Processing register request (stub).", self.tag)
@@ -52,7 +52,7 @@ class APWorker(AP):
         Uses Pydantic message classes for decoding/encoding.
         """
         cmd = command.root
-        logging.info("Rx ctrl->%s: %r", self.tag, cmd)
+        logging.debug("Rx ctrl->%s: %r", self.tag, cmd)
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
                 await self.process_register_req(cmd)

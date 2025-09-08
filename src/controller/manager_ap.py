@@ -34,7 +34,7 @@ class APManager:
             try:
                 msg = Message.model_validate_json(msg_bytes)
                 msg = msg.root  # This is the actual message inside the wrapper.
-                logging.info("Rx %s->ctrl: %r", str(tag), msg)  # All messages from a worker have an ap_address
+                logging.debug("Rx %s->ctrl: %r", str(tag), msg)  # All messages from a worker have an ap_address
             except Exception as e:
                 logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
                 continue
@@ -47,7 +47,7 @@ class APManager:
                     logging.warning(f"Unknown event type: {msg.msg_type}")
 
     def send_to_ap(self, ap: AP, msg):
-        logging.info("Tx ctrl->%s: %r", ap._tag, msg)
+        logging.debug("Tx ctrl->%s: %r", ap._tag, msg)
         msg = msg if isinstance(msg, Message) else Message(msg)
         pub_message = f"{ap._tag} {msg.model_dump_json()}"
         self.zmq_pub.send_string(pub_message)
