@@ -1,7 +1,7 @@
 import uvicorn
 
-from src.app import get_app
 from src.config import settings
+from src.controller.app import get_app
 
 if __name__ == "__main__":
     # The controller is a single-worker application - it spawns tasks for each AP/RT but stores state centrally in

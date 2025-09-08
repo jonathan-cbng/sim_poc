@@ -2,7 +2,7 @@ import time
 
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.common import APState
+from src.controller.common import APState
 
 
 # Helper to create a network and return its index

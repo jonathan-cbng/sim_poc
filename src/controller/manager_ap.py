@@ -2,12 +2,12 @@ import logging
 
 import zmq.asyncio
 
-from src.common import AP, APState
-from src.manager_network import nms
+from src.controller.common import AP, APState
+from src.controller.manager_network import nms
 from src.worker.api import APConnectInd, APRegistered, APRegisterReq, Message
 
 
-class APController:
+class APManager:
     zmq_ctx: zmq.asyncio.Context = None
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
@@ -87,4 +87,4 @@ class APController:
             self.zmq_ctx = None
 
 
-ap_ctrl = APController()
+ap_ctrl = APManager()

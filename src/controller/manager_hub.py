@@ -3,8 +3,8 @@ import uuid
 
 from pydantic import Field
 
-from src.api import APCreateRequest
-from src.common import AP, RT, Node
+from src.controller.api import APCreateRequest
+from src.controller.common import AP, RT, Node
 
 
 class HubManager(Node):

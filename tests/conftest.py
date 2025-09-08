@@ -2,9 +2,9 @@ import pytest
 import zmq.asyncio
 from fastapi.testclient import TestClient
 
-from src.app import get_app
 from src.config import settings
-from src.manager_network import nms
+from src.controller.app import get_app
+from src.controller.manager_network import nms
 
 
 @pytest.fixture(scope="session")

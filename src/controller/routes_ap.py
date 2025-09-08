@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.api import APCreateRequest, Result
-from src.common import AP
-from src.manager_network import nms
+from src.controller.api import APCreateRequest, Result
+from src.controller.common import AP
+from src.controller.manager_network import nms
 
 ap_router = APIRouter(prefix="/network/{network_idx}/hub/{hub_idx}/ap", tags=["AP Management"])
 

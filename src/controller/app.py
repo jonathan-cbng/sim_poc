@@ -17,10 +17,10 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
 from src.config import settings
-from src.controller_ap import ap_ctrl
-from src.routes_ap import ap_router
-from src.routes_hub import hub_router
-from src.routes_network import network_router
+from src.controller.manager_ap import ap_ctrl
+from src.controller.routes_ap import ap_router
+from src.controller.routes_hub import hub_router
+from src.controller.routes_network import network_router
 
 if settings.SSL_CERT is None:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
