@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from starlette.status import HTTP_201_CREATED
 
+from src.api import NetworkCreateRequest, Result
 from src.manager_network import NetworkManager, nms
-from src.models_api import NetworkCreateRequest, Result
 
 network_router = APIRouter(prefix="/network", tags=["Network Management"])
 

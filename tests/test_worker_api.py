@@ -9,7 +9,7 @@ message variants.
 import pytest
 from pydantic import ValidationError
 
-from src.worker_api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
+from src.worker.api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
 
 
 class TestMessageClasses:

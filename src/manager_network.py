@@ -5,11 +5,11 @@ import httpx
 from pydantic import Field
 from starlette.status import HTTP_200_OK, HTTP_300_MULTIPLE_CHOICES
 
+from src.api import APCreateRequest, HubCreateRequest, NetworkCreateRequest
+from src.api_nms import AuthInfo
 from src.common import Node
 from src.config import settings
 from src.manager_hub import HubManager
-from src.models_api import APCreateRequest, HubCreateRequest, NetworkCreateRequest
-from src.models_nms_api import AuthInfo
 
 
 class NetworkManager(Node):

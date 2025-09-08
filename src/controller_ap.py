@@ -4,7 +4,7 @@ import zmq.asyncio
 
 from src.common import AP, APState
 from src.manager_network import nms
-from src.worker_api import APConnectInd, APRegistered, APRegisterReq, Message
+from src.worker.api import APConnectInd, APRegistered, APRegisterReq, Message
 
 
 class APController:

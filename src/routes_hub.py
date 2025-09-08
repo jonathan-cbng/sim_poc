@@ -3,9 +3,9 @@ import logging
 from fastapi import APIRouter, HTTPException
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
+from src.api import HubCreateRequest, Result
 from src.manager_hub import HubManager
 from src.manager_network import nms
-from src.models_api import HubCreateRequest, Result
 
 hub_router = APIRouter(prefix="/network/{network_idx}/hub", tags=["Hub Management"])
 

@@ -7,7 +7,7 @@ import zmq.asyncio
 from nodes.ap import AP
 
 from src.config import settings
-from src.worker_api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
+from src.worker.api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),

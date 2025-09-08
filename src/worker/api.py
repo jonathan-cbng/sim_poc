@@ -88,7 +88,7 @@ class Message(RootModel[APConnectInd | APRegisterReq | APRegistered]):
     the correct model based on the 'msg_type' field.
 
     Example:
-        >>> from src.worker_api import Message
+        >>> from src.worker.api import Message
         >>> msg_json = '{"msg_type": "ap_connect_ind", "ap_address": {"net": 1, "hub": 2, "ap": 3}}'
         >>> msg = Message.model_validate_json(msg_json)
         >>> type(msg.root)
