@@ -1,16 +1,28 @@
-import json
 import logging
 
 import zmq.asyncio
 
-from src.common import APState
+from src.common import AP, APState
 from src.manager_network import nms
+from src.worker_api import APConnectInd, APRegistered, APRegisterReq, Message
 
 
 class APController:
     zmq_ctx: zmq.asyncio.Context = None
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
+
+    def handle_ap_connected(self, msg: APConnectInd):
+        ap = msg.ap_address.get_ap(nms)
+        ap.state = APState.CONNECTED
+        logging.info(f"AP connected: {msg.ap_address}")
+        register_msg = APRegisterReq()
+        self.send_to_ap(ap, register_msg)
+
+    def handle_ap_registered(self, msg: APRegistered):
+        ap = msg.ap_address.get_ap(nms)
+        logging.info(f"AP registered: {msg.ap_address}")
+        ap.state = APState.REGISTERED
 
     async def listener(self):
         """
@@ -19,45 +31,25 @@ class APController:
         while True:
             msg_bytes = await self.zmq_pull.recv()
             try:
-                msg = json.loads(msg_bytes)
+                msg = Message.model_validate_json(msg_bytes)
+                msg = msg.root  # This is the actual message inside the wrapper
+                logging.info(f"Decoded message: {msg}")
             except Exception as e:
                 logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
                 continue
-            event = msg.get("event")
-            match event:
-                case "ap_connected":
+            match msg.msg_type:
+                case "ap_connect_ind":
                     self.handle_ap_connected(msg)
-                case "ap_registered":
+                case "ap_register_ind":
                     self.handle_ap_registered(msg)
                 case _:
-                    logging.warning(f"Unknown event type: {event}")
+                    logging.warning(f"Unknown event type: {msg.msg_type}")
 
-    @staticmethod
-    def get_ap_from_msg(msg):
-        try:
-            net_idx = int(msg["net"])
-            hub_idx = int(msg["hub"])
-            ap_idx = int(msg["ap"])
-            ap = nms.get_network(net_idx).get_hub(hub_idx).get_ap(ap_idx)
-            return ap, net_idx, hub_idx, ap_idx
-        except Exception as e:
-            logging.warning(f"Message missing or invalid net/hub/ap fields: {msg} ({e})")
-            return None
-
-    def handle_ap_connected(self, msg):
-        ap, net_idx, hub_idx, ap_idx = self.get_ap_from_msg(msg)
-        ap.state = APState.CONNECTED
-        logging.info(f"AP connected: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
-        # Send register request to AP via PUB socket
-        register_msg = json.dumps({"event": "register_ap_to_nms"})
-        pub_message = f"{ap._tag} {register_msg}"
+    def send_to_ap(self, ap: AP, msg):
+        msg = msg if isinstance(msg, Message) else Message(msg)
+        pub_message = f"{ap._tag} {msg.model_dump_json()}"
         self.zmq_pub.send_string(pub_message)
-        logging.info(f"Sent register_ap_to_nms to {ap._tag}: {register_msg}")
-
-    def handle_ap_registered(self, msg):
-        ap, net_idx, hub_idx, ap_idx = self.get_ap_from_msg(msg)
-        logging.info(f"AP registered: net={net_idx}, hub={hub_idx}, ap={ap_idx}")
-        ap.state = APState.REGISTERED
+        logging.info(f"Sent {pub_message}")
 
     def setup_zmq(self, app, pub_port, pull_port):
         """

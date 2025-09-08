@@ -1,12 +1,13 @@
 import argparse
 import asyncio
-import json
 import logging
 
 import zmq
 import zmq.asyncio
+from nodes.ap import AP
 
 from src.config import settings
+from src.worker_api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
@@ -14,11 +15,10 @@ logging.basicConfig(
 )
 
 
-class APWorker:
+class APWorker(AP):
     def __init__(self, network_idx, hub_idx, ap_idx, pub_addr, pull_addr):
-        self.network_idx = network_idx
-        self.hub_idx = hub_idx
-        self.ap_idx = ap_idx
+        super().__init__()
+        self.ap_address = ApAddress(net=network_idx, hub=hub_idx, ap=ap_idx)
         self.tag = f"NET{network_idx:04d}HUB{hub_idx:04d}AP{ap_idx:04d}"
         self.ctx = zmq.asyncio.Context()
         # Set up PUB socket (for receiving commands)
@@ -29,55 +29,61 @@ class APWorker:
         self.push_sock = self.ctx.socket(zmq.PUSH)
         self.push_sock.connect(pull_addr)
 
-    async def execute_command(self, command: dict):
+    async def send_to_controller(self, msg):
+        """
+        Send a message to the controller.
+        Wraps the payload in a Message root model for correct encoding.
+        """
+        # Wrap this message in the Message root model if not already done
+        payload = msg if isinstance(msg, Message) else Message(msg)
+        await self.push_sock.send_string(payload.model_dump_json())
+        logging.info(f"[AP Worker {self.tag}] Sent message to controller: {msg}")
+
+    async def process_register_req(self, command: APRegisterReq):
+        logging.info(f"[AP Worker {self.tag}] Processing register request (stub).")
+        # Simulate sending a registration confirmation back
+        response = APRegistered(ap_address=command.ap_address, registered_at="2025-09-08T12:00:00Z")
+        await self.send_to_controller(response)
+
+    async def execute_command(self, command: Message):
         """
         Execute a command received from the controller.
-        This is a stub implementation; in a real AP, this would perform actions.
+        Uses Pydantic message classes for decoding/encoding.
         """
-        if not command:
-            logging.warning(f"[AP Worker {self.tag}] No command to execute.")
-            return
-        event = command.get("event")
-        match event:
-            case "register_ap_to_nms":
-                logging.info(f"[AP Worker {self.tag}] Registering AP to NMS (stub).")
-                # Simulate sending a registration confirmation back
-                response = json.dumps(
-                    {"event": "ap_registered", "net": self.network_idx, "hub": self.hub_idx, "ap": self.ap_idx}
-                )
-                await self.push_sock.send_string(response)
+        cmd = command.root
+        logging.debug(f"[AP Worker {self.tag}] Received command: {cmd}")
+        match cmd.msg_type:
+            case "ap_register_req":
+                await self.process_register_req(cmd)
             case _:
-                logging.warning(f"[AP Worker {self.tag}] Unknown command event: {event}")
-        return
+                logging.warning(f"[AP Worker {self.tag}] Unknown command event: {cmd.msg_type}")
 
-    def decode_message(self, message: str):
+    def decode_message(self, message: str) -> Message | None:
         """
         Process a message received from the controller.
         Expected format: '<subscriber_tag> <json_message>'
+        Uses Pydantic Message.model_validate_json for decoding.
         """
         try:
             json_part = message.split(" ", 1)[1]
-            data = json.loads(json_part)
-            logging.info(f"[AP Worker {self.tag}] received message': {data}")
+            data = Message.model_validate_json(json_part)
+            logging.info(f"[AP Worker {self.tag}] received message: {data}")
             return data
-        except json.JSONDecodeError as e:
-            logging.error(f"[AP Worker {self.tag}] JSON decode error: {e} in message: {message}")
-            return None
-        except ValueError:
-            logging.error(f"[AP Worker {self.tag}] Malformed message (no space found): {message}")
+        except Exception as e:
+            logging.error(f"[AP Worker {self.tag}] Error decoding message: {e} in message: {message}")
             return None
 
     async def read_loop(self):
-        # Send 'connected' message with separate fields
-        msg = json.dumps({"event": "ap_connected", "net": self.network_idx, "hub": self.hub_idx, "ap": self.ap_idx})
-        await self.push_sock.send_string(msg)
+        # Send 'connected' message using Pydantic class
+        msg = APConnectInd(ap_address=self.ap_address)
+        await self.send_to_controller(msg)
         # Main loop: wait for messages from controller
         while True:
             try:
                 message = await self.pub_sock.recv_string()
-                logging.debug(f"[AP Worker {self.tag}] Received command: {message}")
                 command = self.decode_message(message)
-                await self.execute_command(command)
+                if command is not None:
+                    await self.execute_command(command)
             except Exception as e:
                 logging.error(f"[AP Worker {self.tag}] Error receiving command: {e}")
                 await asyncio.sleep(1)

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from src.config import settings
 
 
-class Message(BaseModel):
+class Result(BaseModel):
     message: str
 
 

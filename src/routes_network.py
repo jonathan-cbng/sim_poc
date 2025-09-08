@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from starlette.status import HTTP_201_CREATED
 
 from src.manager_network import NetworkManager, nms
-from src.models_api import Message, NetworkCreateRequest
+from src.models_api import NetworkCreateRequest, Result
 
 network_router = APIRouter(prefix="/network", tags=["Network Management"])
 
@@ -34,9 +34,9 @@ async def get_network(idx: int) -> NetworkManager:
 
 # Endpoint: Stop and remove an AP and all underlying RTs
 @network_router.delete("/{idx}")
-async def delete_network(idx: int) -> Message:
+async def delete_network(idx: int) -> Result:
     """
     Stop and remove an AP and all underlying RTs
     """
     await nms.remove_network(idx)
-    return Message(message=f"Network {idx} deleted")
+    return Result(message=f"Network {idx} deleted")

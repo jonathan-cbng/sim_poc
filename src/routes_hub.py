@@ -5,7 +5,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from src.manager_hub import HubManager
 from src.manager_network import nms
-from src.models_api import HubCreateRequest, Message
+from src.models_api import HubCreateRequest, Result
 
 hub_router = APIRouter(prefix="/network/{network_idx}/hub", tags=["Hub Management"])
 
@@ -43,10 +43,10 @@ async def get_hub(network_idx: int, idx: int) -> HubManager:
 
 
 @hub_router.delete("/{idx}")
-async def delete_hub(network_idx: int, idx: int) -> Message:
+async def delete_hub(network_idx: int, idx: int) -> Result:
     """
     Stop and remove a Hub and all underlying APs and RTs
     """
     network = nms.get_network(network_idx)
     await network.remove_hub(idx)
-    return Message(message=f"Hub {idx} deleted")
+    return Result(message=f"Hub {idx} deleted")

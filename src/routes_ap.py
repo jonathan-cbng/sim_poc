@@ -3,7 +3,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from src.common import AP
 from src.manager_network import nms
-from src.models_api import APCreateRequest, Message
+from src.models_api import APCreateRequest, Result
 
 ap_router = APIRouter(prefix="/network/{network_idx}/hub/{hub_idx}/ap", tags=["AP Management"])
 
@@ -34,8 +34,8 @@ async def get_ap(network_idx: int, hub_idx: int, idx: int) -> AP:
 
 
 @ap_router.delete("/{idx}")
-async def delete_ap(network_idx: int, hub_idx: int, idx: int) -> Message:
+async def delete_ap(network_idx: int, hub_idx: int, idx: int) -> Result:
     network = nms.get_network(network_idx)
     hub = network.get_hub(hub_idx)
     await hub.remove_ap(idx)
-    return Message(message=f"AP {idx} deleted")
+    return Result(message=f"AP {idx} deleted")
