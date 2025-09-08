@@ -27,7 +27,7 @@ if settings.SSL_CERT is None:
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
-    format="%(levelname)s: %(asctime)s %(filename)s - %(message)s",
+    format="%(levelname)s: %(asctime)s %(filename)s:%(lineno)d - %(message)s",
 )
 
 

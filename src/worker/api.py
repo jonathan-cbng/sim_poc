@@ -9,9 +9,16 @@ The key feature is the Message class, which uses the 'msg_type' field as a discr
 incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APRegistered).
 """
 
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, RootModel
+
+
+class MessageTypes(StrEnum):
+    AP_CONNECT_IND = "ap_connect_ind"
+    AP_REGISTER_REQ = "ap_register_req"
+    AP_REGISTER_IND = "ap_register_ind"
 
 
 class ApAddress(BaseModel):
@@ -50,7 +57,7 @@ class APConnectInd(BaseModel):
         ap_address (ApAddress): The address of the AP that connected.
     """
 
-    msg_type: Literal["ap_connect_ind"] = "ap_connect_ind"
+    msg_type: Literal[MessageTypes.AP_CONNECT_IND] = MessageTypes.AP_CONNECT_IND
     ap_address: ApAddress
 
 
@@ -62,10 +69,10 @@ class APRegisterReq(BaseModel):
         msg_type (Literal['ap_register_req']): Discriminator for this message type.
     """
 
-    msg_type: Literal["ap_register_req"] = "ap_register_req"
+    msg_type: Literal[MessageTypes.AP_REGISTER_REQ] = MessageTypes.AP_REGISTER_REQ
 
 
-class APRegistered(BaseModel):
+class APRegisterInd(BaseModel):
     """
     Message indicating an AP has been registered.
 
@@ -75,12 +82,12 @@ class APRegistered(BaseModel):
         registered_at (str): ISO8601 timestamp of registration.
     """
 
-    msg_type: Literal["ap_register_ind"] = "ap_register_ind"
+    msg_type: Literal[MessageTypes.AP_REGISTER_IND] = MessageTypes.AP_REGISTER_IND
     ap_address: ApAddress
     registered_at: str
 
 
-class Message(RootModel[APConnectInd | APRegisterReq | APRegistered]):
+class Message(RootModel[APConnectInd | APRegisterReq | APRegisterInd]):
     """
     Union wrapper for AP worker messages, using 'msg_type' as a discriminator.
 

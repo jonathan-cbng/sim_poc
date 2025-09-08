@@ -7,11 +7,11 @@ import zmq.asyncio
 from nodes.ap import AP
 
 from src.config import settings
-from src.worker.api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
+from src.worker.api import ApAddress, APConnectInd, APRegisterInd, APRegisterReq, Message, MessageTypes
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
-    format="%(levelname)s: %(asctime)s %(filename)s - %(message)s",
+    format="%(levelname)s: %(asctime)s %(filename)s:%(lineno)d - %(message)s",
 )
 
 
@@ -35,14 +35,15 @@ class APWorker(AP):
         Wraps the payload in a Message root model for correct encoding.
         """
         # Wrap this message in the Message root model if not already done
-        payload = msg if isinstance(msg, Message) else Message(msg)
-        await self.push_sock.send_string(payload.model_dump_json())
-        logging.info(f"[AP Worker {self.tag}] Sent message to controller: {msg}")
+        msg = msg if isinstance(msg, Message) else Message(msg)
+        payload = f"{self.tag:} {msg.model_dump_json()}"  # not strictly necessary but makes it symmetric with pub
+        await self.push_sock.send_string(payload)
+        logging.info("Tx %s->controller: %r", self.tag, msg.root)
 
     async def process_register_req(self, command: APRegisterReq):
-        logging.info(f"[AP Worker {self.tag}] Processing register request (stub).")
+        logging.info("%s: Processing register request (stub).", self.tag)
         # Simulate sending a registration confirmation back
-        response = APRegistered(ap_address=command.ap_address, registered_at="2025-09-08T12:00:00Z")
+        response = APRegisterInd(ap_address=self.ap_address, registered_at="2025-09-08T12:00:00Z")
         await self.send_to_controller(response)
 
     async def execute_command(self, command: Message):
@@ -51,9 +52,9 @@ class APWorker(AP):
         Uses Pydantic message classes for decoding/encoding.
         """
         cmd = command.root
-        logging.debug(f"[AP Worker {self.tag}] Received command: {cmd}")
+        logging.info("Rx ctrl->%s: %r", self.tag, cmd)
         match cmd.msg_type:
-            case "ap_register_req":
+            case MessageTypes.AP_REGISTER_REQ:
                 await self.process_register_req(cmd)
             case _:
                 logging.warning(f"[AP Worker {self.tag}] Unknown command event: {cmd.msg_type}")
@@ -67,7 +68,6 @@ class APWorker(AP):
         try:
             json_part = message.split(" ", 1)[1]
             data = Message.model_validate_json(json_part)
-            logging.info(f"[AP Worker {self.tag}] received message: {data}")
             return data
         except Exception as e:
             logging.error(f"[AP Worker {self.tag}] Error decoding message: {e} in message: {message}")

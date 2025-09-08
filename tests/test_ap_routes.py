@@ -49,10 +49,10 @@ def test_create_ap(test_client):
         status_resp = test_client.get(f"/network/{network_idx}/hub/{hub_idx}/ap/{ap_id}")
         assert status_resp.status_code == HTTP_200_OK
         ap = status_resp.json()
-        if ap.get("state") == APState.CONNECTED:
+        if ap.get("state") == APState.REGISTERED:
             break
         if time.time() - start > timeout:
-            raise AssertionError(f"AP did not reach CONNECTED state. last state: {ap.get('state')}")
+            raise AssertionError(f"AP did not reach REGISTERED state. last state: {ap.get('state')}")
         time.sleep(interval)
 
 

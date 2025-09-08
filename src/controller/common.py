@@ -76,7 +76,7 @@ class AP(Node):
             [
                 "python",
                 "-m",
-                "src.worker.main",
+                "src.worker.worker",
                 str(network_idx),  # network_idx
                 str(hub_idx),  # hub_idx
                 str(ap_idx),  # ap_idx

@@ -9,7 +9,7 @@ message variants.
 import pytest
 from pydantic import ValidationError
 
-from src.worker.api import ApAddress, APConnectInd, APRegistered, APRegisterReq, Message
+from src.worker.api import ApAddress, APConnectInd, APRegisterInd, APRegisterReq, Message
 
 
 class TestMessageClasses:
@@ -47,11 +47,11 @@ class TestMessageClasses:
         Message wrapper.
         """
         addr = ApAddress(net=1, hub=2, ap=3)
-        reg_ind = Message(APRegistered(ap_address=addr, registered_at="2025-09-08T12:00:00Z"))
+        reg_ind = Message(APRegisterInd(ap_address=addr, registered_at="2025-09-08T12:00:00Z"))
         data = reg_ind.model_dump_json()
         result = Message.model_validate_json(data).root
         assert result.msg_type == "ap_register_ind"
-        assert isinstance(result, APRegistered)
+        assert isinstance(result, APRegisterInd)
 
     def test_message_invalid_type(self):
         """
