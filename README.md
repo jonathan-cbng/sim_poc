@@ -1,5 +1,89 @@
 # Workbench Simulator: Multi-AP Single-Worker Prototype
 
+> **System Overview and Architecture**
+
+## Purpose
+
+Simulate a large, dynamic network of Networks, Hubs, Access Points (APs) and Remote Terminals (RTs) for testing and
+validating control plane logic and API endpoints.
+
+## Architecture
+
+- **Control Plane:** FastAPI server managing Network/Hub/AP/RT lifecycle and exposing RESTful API. Networks/Hubs are
+  managed here.
+- **Worker Process:** Single Python process simulating multiple APs and their RTs using asyncio.
+- **Inter-process Communication:** ZeroMQ for command and status messaging between Control Plane and Workers.
+- **Data Storage:** In-memory for state persistence.
+
+## Control Plane
+
+- Support high scalability (50,000+ nodes) using multiple workers (future-proof).
+- Dynamic AP/RT creation and deletion at runtime.
+- Configurable heartbeat intervals per AP.
+- Allow scripting and bulk configuration via API or config file (inc config saving from current state).
+- Heirarchical data model:
+  - Network
+    - Hub
+      - Access Point (AP)
+        - Remote Terminal (RT)
+  - All entities have unique IDs and indices within their parent scope. All entities are addressable via API using
+    either ID or index.
+  - Provides API endpoints for:
+    - Creating/deleting Networks, Hubs, APs, RTs
+    - Configuring heartbeat intervals
+    - Triggering alarms at AP or RT level (specific IDs or percentage sampling)
+    - Querying status of all entities
+  - Provides zeroMQ PUB/SUB socket for sending commands to Worker process.
+  - Provides zeroMQ PUSH/PULL socket for receiving status updates from Worker process.
+
+## Worker Tasks
+
+- Simulates one or more APs and all associated RTs.
+- Simulate node registration and AP/RT heartbeats and alarm events.
+- Aggregate and report status for all APs and RTs at 1 Hz.
+- Handle commands from Control Plane (create/delete APs/RTs, trigger alarms) sent via ZeroMQ subscription socket.
+- Send status updates back to Control Plane via ZeroMQ push socket.
+- (In future) Support simluated AP/RT web server endpoints for NMS to poll/query. Each AP/RT will have its own IPv6
+  address, generated dynamically from a common prefix using network/hub/ap/rt index. Worker task will assign and manage
+  these addresses.
+
+## API Contract (examples)
+
+- `POST /ap` — Create an AP (with optional RTs)
+- `POST /ap/{ap_id}/rt` — Add RTs to an AP
+- `POST /ap/{ap_id}/alarm` — Trigger alarms
+- `GET /ap` — List all AP statuses
+- `DELETE /ap/{ap_id}` — Remove an AP and its RTs
+
+## Constraints
+
+- All operations must be possible at runtime (no restarts).
+- Heartbeat and status aggregation must not block other operations.
+- System must be testable and scriptable (e.g., via Postman or pytest).
+- Must support both local and remote AP simulation (future-proof).
+
+## Testing
+
+- Tests are run using `PYTHONPATH=. pytest --maxfail=3 -v`
+- Unit tests for API endpoints and core logic.
+- Integration tests simulating various scenarios (e.g., high load, alarm conditions).
+- Performance tests to validate scalability.
+- Code coverage target: 95%+.
+
+## Example Scenario
+
+1. User creates 10 APs, each with 64 RTs.
+2. User triggers a 25% RT alarm on AP 3.
+3. User deletes AP 5; all its RTs are removed.
+4. System continues to aggregate and report status for remaining APs/RTs.
+
+## Output
+
+- All API responses must be JSON.
+- Status endpoints must return up-to-date heartbeat and alarm state for each AP/RT.
+
+______________________________________________________________________
+
 A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
 Application Under Test (AUT).
 
@@ -135,24 +219,42 @@ curl -X DELETE http://localhost:8000/ap/{ap_id}
 5. Logging: Introduce structured JSON logs and correlation IDs.
 6. High-scale timers: Move heartbeats to a central scheduler / timer wheel.
 
-# Proof of Concept
+# Experimental work
 
-Simple proof of concept for the AP/RT simulator - currently tested to 75000 nodes (50 APs with 1500 RTs each).
+The `experimental/` folder contains two sub-projects:
 
-The docker-compose file `docker-compose.yaml` sets up a network with 10 containers. Each container simulates one AP with
-2500 RTs by assinging a unique IP address to each node. Then a single fastapi server connects to all IP addresses in the
-network and provides an endpoint `/which_ip` which returns the IP address on which the request was received.
+## 1. multi-ip
 
-In `utils` you can find two helper scripts:
+This sub-project demonstrates large-scale AP/RT simulation using unique IPv6 addresses for each node. It includes:
 
-- `gen_compose.py` generates the `docker-compose.yaml` file based on the number of APs and RTs you want to simulate.
-- `test_ipv6_which_ip.py` is a simple test script that sends requests to all of the simulated APs to check that the
-  `/which_ip` endpoint returns a 200 OK response and the correct IP address.
+- A `docker-compose.yaml` that sets up a network with multiple containers, each simulating one AP with many RTs (each RT
+  and AP gets a unique IPv6 address).
+- A FastAPI server that connects to all simulated IP addresses and provides a `/which_ip` endpoint to verify correct
+  address assignment.
+- Helper scripts:
+  - `gen_compose.py`: Generates the `docker-compose.yaml` file based on the desired number of APs and RTs.
+  - `test_ipv6_which_ip.py`: Sends requests to all simulated APs to check that the `/which_ip` endpoint returns the
+    correct IP address.
 
-Note: To be able to handle the very large numbers of ipv6 addresse required (1 per RT+ 1 per AP), it is necessary to
-increase the garbage collection thresholds for the IPv6 neighbor cache.
+**Performance Note:** Handling very large numbers of IPv6 addresses requires increasing the garbage collection
+thresholds for the IPv6 neighbor cache. See the sysctl configuration below for details.
 
-To do this, you can add the following lines to your `/etc/sysctl.conf` file:
+## 2. zmq
+
+This sub-project provides a minimal demonstration of ZeroMQ-based communication, which is used for inter-process
+messaging in the main simulator. It includes:
+
+- `zmq_server.py`: A simple ZeroMQ server for receiving messages.
+- `zmq_client.py`: A client for sending messages to the server.
+
+These scripts can be used to test and validate the ZeroMQ PUB/SUB and PUSH/PULL patterns that are foundational to the
+simulator's architecture.
+
+______________________________________________________________________
+
+**IPv6 Neighbor Cache Configuration:**
+
+To handle large numbers of IPv6 addresses, add the following lines to your `/etc/sysctl.conf` file:
 
 ```bash
 net.ipv6.neigh.default.gc_thresh1 = 262144
@@ -160,7 +262,7 @@ net.ipv6.neigh.default.gc_thresh2 = 524288
 net.ipv6.neigh.default.gc_thresh3 = 1048576
 ```
 
-Alternatively, you can run the following commands:
+Or apply them at runtime:
 
 ```bash
 sudo sysctl -w net.ipv6.neigh.default.gc_thresh1=262144
@@ -168,10 +270,10 @@ sudo sysctl -w net.ipv6.neigh.default.gc_thresh2=524288
 sudo sysctl -w net.ipv6.neigh.default.gc_thresh3=1048576
 ```
 
-## Performance considerations
+**Performance considerations:**
 
 Adding many IPv6 addresses to the system is not without its performance considerations. When using a large number of
-IPv6 addresses the host kernel actually takes some time to honour the ip assignments requested by the guest containers.
+IPv6 addresses the host kernel actually takes some time to honour the IP assignments requested by the guest containers.
 
 The way we detect this is by setting the health check for each container to ping the `/which_ip` endpoint of the last IP
 address assigned to the container (which is the last RT in the container).
