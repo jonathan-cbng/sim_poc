@@ -3,12 +3,12 @@ from datetime import UTC, datetime
 import jwt
 
 from src import config
-from src.api_nms import AuthInfo
+from src.api_nms import NmsAuthInfo
 
 
 class TestAuthInfo:
     def test_jwt(self):
-        jwt_info = AuthInfo()
+        jwt_info = NmsAuthInfo()
         token = jwt_info.jwt(expiry_seconds=60)
         # Decode the token to verify its contents
         decoded = jwt.decode(token, config.settings.SECRET_KEY, algorithms=[config.settings.ALGORITHM])

@@ -17,7 +17,7 @@ class Node(BaseModel):
     parent_index: int | None = None
     children: dict[int, Any] = Field(default_factory=dict)
 
-    def get_index(self, requested: int) -> int:
+    def get_index(self, requested: int = -1) -> int:
         """
         Returns the lowest non-negative integer not in used_indices.
         """

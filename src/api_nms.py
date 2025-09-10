@@ -7,148 +7,7 @@ from pydantic import BaseModel, Field
 from src.config import settings
 
 
-# --- Network Creation ---
-class NetworkArea(BaseModel):
-    lat_deg: float
-    lon_deg: float
-    radius_km: float
-    auto_parent: bool
-
-
-class RFDetails(BaseModel):
-    freq_band: int
-    upper_mhz: int
-    lower_mhz: int
-    chan_bws: list[int]
-
-
-class APSystemPamSshRadius(BaseModel):
-    server_ip: str
-    server_port: int
-    shared_secret: str
-    timeout_secs: int
-    source_ip: str
-    vrf: str
-
-
-class GeneralOptions(BaseModel):
-    ap_system_pam_ssh_radius: APSystemPamSshRadius
-
-
-class NetworkCreateRequest(BaseModel):
-    name: str
-    details: str
-    timezone: str
-    customer_contact_name: str
-    customer_contact_title: str
-    customer_contact_email: str
-    customer_contact_mobile: str
-    customer_contact_info: str
-    network_area: NetworkArea
-    rf_details: RFDetails
-    alarm_options: list = Field(default_factory=list)
-    general_options: GeneralOptions
-    sw_version_auto_update: str
-
-
-# --- Hub Creation ---
-class HubCreateRequest(BaseModel):
-    csni: str
-    auid: str
-    id: str
-    name: str
-    address: str
-    lat_deg: float
-    lon_deg: float
-    node_status: str
-    notes: str
-
-
-# --- AP Creation ---
-class APConfiguration(BaseModel):
-    ap_du_beam_profile_id: int
-    ap_du_dlmodulation: str
-    ap_du_isulcaenbld: bool
-    ap_du_maxdlmcs: int
-    ap_du_nssbpwr: int
-    ap_du_p0nominal_pucch: int
-    ap_du_p0nominal_pusch: int
-    ap_du_prachcfgidx: int
-    ap_du_rf_channel_centre_frequency_ghz: str
-    ap_du_rf_channel_downstream_carrier_bandwidth_mhz: int
-    ap_du_rf_channel_downstream_num_carriers: int
-    ap_du_rf_channel_upstream_carrier_bandwidth_mhz: int
-    ap_du_rf_channel_upstream_num_carriers: int
-    ap_du_zerocorrelationzonecfg: int
-    ap_rc_rt_management_csr_ippdu_gateway: str
-    ap_rc_rt_management_rt_ippdu_gateway: str
-    ap_system_ssh_password: str
-    ap_system_ssh_user: str
-    frequency_band_ghz: int
-
-
-class APCreateRequest(BaseModel):
-    auid: str
-    allocated_auid: str
-    id: str
-    name: str
-    parent_auid: str
-    node_status: str
-    node_priority: str
-    ap_system_transmitter_enabled: bool
-    azimuth_deg: int
-    elevation_deg: int
-    height_mast_m: int
-    height_asl_m: int
-    notes: str
-    configuration: APConfiguration
-
-
-# --- AP Secret Registration ---
-class APRegisterSecretRequest(BaseModel):
-    pass  # Body is empty, only headers are used
-
-
-# --- AP Candidate Registration ---
-class APRegisterCandidateRequest(BaseModel):
-    csi: str
-    installer_key: str
-    chosen_auid: str
-
-
-# --- RT Creation ---
-class RTNetworkDetails(BaseModel):
-    rt_wwan_1_ipv6_address: str | None = None
-
-
-class RTCreateRequest(BaseModel):
-    auid: str
-    id: str
-    name: str
-    parent_auid: str
-    node_priority: str
-    node_status: str
-    address: str
-    lat_deg: float
-    lon_deg: float
-    height_mast_m: int
-    height_asl_m: int
-    notes: str
-    network_details: RTNetworkDetails
-
-
-# --- RT Registration ---
-class RTRegistrationParam(BaseModel):
-    name: str
-    type: str
-    value: str
-
-
-class RTRegisterRequest(BaseModel):
-    params: list[RTRegistrationParam]
-
-
-class AuthInfo(BaseModel):
+class NmsAuthInfo(BaseModel):
     """
     Authentication and authorization information for a user.
     """
@@ -172,6 +31,12 @@ class AuthInfo(BaseModel):
     )
     geolocation_restriction: list[str] = Field(default_factory=list)
 
+    def auth_header(self):
+        """
+        Generate the authorization header for HTTP requests.
+        """
+        return {"Authorization": f"Bearer {self.jwt()}"}
+
     def jwt(self, expiry_seconds: int = settings.TOKEN_EXPIRY_SECONDS) -> str:
         """
         Generate a JWT token for the user with the specified expiry.
@@ -191,3 +56,49 @@ class AuthInfo(BaseModel):
         )
 
         return jwt.encode(self.model_dump(), settings.SECRET_KEY, settings.ALGORITHM)
+
+
+# --- NetworkCreateRequest and related models for NBAPI network creation ---
+
+
+class NmsNetworkArea(BaseModel):
+    lat_deg: float = Field(default=51.5072)
+    lon_deg: float = Field(default=0.1276)
+    radius_km: float = Field(default=100)
+    auto_parent: bool = Field(default=False)
+
+
+class NmsRFDetails(BaseModel):
+    freq_band: int = Field(default=39)
+    upper_mhz: int = Field(default=39500)
+    lower_mhz: int = Field(default=38500)
+    chan_bws: list[int] = Field(default_factory=lambda: [100])
+
+
+class NmsAPSystemPamSshRadius(BaseModel):
+    server_ip: str = Field(default="1.2.3.4")
+    server_port: int = Field(default=1234)
+    shared_secret: str = Field(default="secret")
+    timeout_secs: int = Field(default=5)
+    source_ip: str = Field(default="4.3.2.1")
+    vrf: str = Field(default="NA")
+
+
+class NmsGeneralOptions(BaseModel):
+    ap_system_pam_ssh_radius: NmsAPSystemPamSshRadius = Field(default_factory=NmsAPSystemPamSshRadius)
+
+
+class NmsNetworkCreateRequest(BaseModel):
+    name: str = Field(default="Test Network")
+    details: str = Field(default="No details")
+    timezone: str = Field(default="UTC")
+    customer_contact_name: str = Field(default="Billy Lardner")
+    customer_contact_title: str = Field(default="SE")
+    customer_contact_email: str = Field(default="tester@cbng.co.uk")
+    customer_contact_mobile: str = Field(default="01234567890")
+    customer_contact_info: str = Field(default="N/A")
+    network_area: NmsNetworkArea = Field(default_factory=NmsNetworkArea)
+    rf_details: NmsRFDetails = Field(default_factory=NmsRFDetails)
+    alarm_options: list[dict] = Field(default_factory=list)
+    general_options: NmsGeneralOptions = Field(default_factory=NmsGeneralOptions)
+    sw_version_auto_update: str | None = Field(default="")
