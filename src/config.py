@@ -30,5 +30,7 @@ class Settings(BaseSettings):
 
     TOKEN_EXPIRY_SECONDS: int = 3600 * 24  # 1 day
 
+    MAX_DIFF_DEG: float = 0.4  # Maximum degree difference for randomizing lat/lon
+
 
 settings = Settings()

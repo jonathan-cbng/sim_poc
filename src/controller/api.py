@@ -17,8 +17,6 @@ class APCreateRequest(BaseModel):
 
 
 class HubCreateRequest(BaseModel):
-    auid: str = ""
-
     num_aps: int = settings.DEFAULT_APS_PER_HUB
     num_rts_per_ap: int = settings.DEFAULT_RTS_PER_AP
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS

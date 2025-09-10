@@ -1,11 +1,10 @@
 import logging
-import uuid
 
 import httpx
 from fastapi import HTTPException, status
 from pydantic import Field
 
-from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
+from src.api_nms import NmsAuthInfo, NmsHubCreateRequest, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest
 from src.controller.common import Node
@@ -19,8 +18,19 @@ class NetworkManager(Node):
     children: dict[int, HubManager] = Field(default_factory=dict)
 
     async def add_hub(self, net_index: int, req: HubCreateRequest, index=-1) -> int:
+        # Register hub with northbound API
+        hub_req = NmsHubCreateRequest(csni=self.csni)
+        url = f"{settings.NBAPI_URL}/api/v1/node/hub/{hub_req.auid}"
+        headers = NmsAuthInfo().auth_header()
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(url, json=hub_req.model_dump(), headers=headers, timeout=10.0)
+                resp.raise_for_status()
+            except httpx.HTTPError as e:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+        # Proceed with local creation
         index = self.get_index(index)
-        hub_mgr = HubManager(index=index, auid=req.auid, parent_index=net_index)
+        hub_mgr = HubManager(index=index, auid=hub_req.auid, parent_index=net_index)
         # Add required number of APs
         for _ in range(req.num_aps):
             ap_req = APCreateRequest(
@@ -54,7 +64,6 @@ class NMSManager(Node):
         # Add required number of hubs
         for _ in range(req.hubs):
             hub_req = HubCreateRequest(
-                auid=str(uuid.uuid4()),
                 num_aps=req.aps_per_hub,
                 num_rts_per_ap=req.rts_per_ap,
                 heartbeat_seconds=req.ap_heartbeat_seconds,
@@ -70,10 +79,9 @@ class NMSManager(Node):
         """
         Register a network with the real northbound API.
         Args:
-            req (NmsNetworkCreateRequest): The network creation request body.
             csi (str): Customer CSI string.
         Returns:
-            tuple[str, bool]: (response_text, success)
+            NetworkManager: The created NetworkManager instance.
         """
         url = f"{settings.NBAPI_URL}/api/v1/network/csi/{csi}"
         headers = NmsAuthInfo().auth_header()

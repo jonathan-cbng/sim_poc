@@ -1,8 +1,10 @@
 import time
 from datetime import UTC, datetime
+from random import random
 
 import jwt
-from pydantic import BaseModel, Field
+import shortuuid
+from pydantic import BaseModel, Field, model_validator
 
 from src.config import settings
 
@@ -102,3 +104,21 @@ class NmsNetworkCreateRequest(BaseModel):
     alarm_options: list[dict] = Field(default_factory=list)
     general_options: NmsGeneralOptions = Field(default_factory=NmsGeneralOptions)
     sw_version_auto_update: str | None = Field(default="")
+
+
+class NmsHubCreateRequest(BaseModel):
+    csni: str
+    auid: str = Field(default_factory=shortuuid.uuid)
+    id: str | None = None
+    name: str | None = None
+    address: str = "None"
+    lat_deg: float = Field(default_factory=lambda: 51.5072 + random() * settings.MAX_DIFF_DEG)
+    lon_deg: float = Field(default_factory=lambda: 0.1276 + random() * settings.MAX_DIFF_DEG)
+    node_status: str = Field(default="Planned")
+    notes: str = Field(default="No notes")
+
+    @model_validator(mode="after")
+    def fill_missing_id_name(self):
+        self.id = self.id or f"ID_{self.auid}"
+        self.name = self.name or f"NAME_{self.auid}"
+        return self
