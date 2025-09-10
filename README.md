@@ -38,7 +38,7 @@ validating control plane logic and API endpoints.
 
 ## Worker Tasks
 
-- Simulates one or more APs and all associated RTs.
+- Simulates one (or maybe more, TBC) APs and all associated RTs.
 - Simulate node registration and AP/RT heartbeats and alarm events.
 - Aggregate and report status for all APs and RTs at 1 Hz.
 - Handle commands from Control Plane (create/delete APs/RTs, trigger alarms) sent via ZeroMQ subscription socket.
