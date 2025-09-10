@@ -4,16 +4,29 @@
 
 ## Purpose
 
-Simulate a large, dynamic network of Networks, Hubs, Access Points (APs) and Remote Terminals (RTs) for testing and
-validating control plane logic and API endpoints.
+A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
+Application Under Test (AUT).
 
-## Architecture
+## Architecture/Tech Stack
 
-- **Control Plane:** FastAPI server managing Network/Hub/AP/RT lifecycle and exposing RESTful API. Networks/Hubs are
-  managed here.
-- **Worker Process:** Single Python process simulating multiple APs and their RTs using asyncio.
-- **Inter-process Communication:** ZeroMQ for command and status messaging between Control Plane and Workers.
+- **Control Plane:** FastAPI (Python)
+- **Process Management:**
+  - Local: Python multiprocessing, 1 process per AP
+  - Remote: paramiko/fabric (SSH-based process launch) (for future study)
+- **Inter-process Communication:** ZeroMQ (PUB/SUB for commands, PUSH/PULL for responses), served from the control API
+  server
+- **AP Simulator:** Python process simulating a single AP and its RTs. Each AP process runs:
+  - **Async Runtime:** asyncio event loop
+  - **AP Actor:** Manages AP heartbeat, registration, and AP-level alarms
+  - **RT Actors:** Each RT is an asyncio Task managed by the AP actor, handling registration, periodic status updates,
+    and RT-level alarms
+- **Outbound HTTP:** aiohttp sessions inside each AP simulator process
 - **Data Storage:** In-memory for state persistence.
+
+Scripting/configuration of this system should be possible using postman, but there should be a way of loading a
+pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs in one go.
+
+![System Architecture](docs/architecture.svg)
 
 ## Control Plane
 
@@ -82,29 +95,6 @@ validating control plane logic and API endpoints.
 - All API responses must be JSON.
 - Status endpoints must return up-to-date heartbeat and alarm state for each AP/RT.
 
-______________________________________________________________________
-
-A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
-Application Under Test (AUT).
-
-## Technology stack
-
-- **Control Plane:** FastAPI (Python)
-- **Process Management:**
-  - Local: Python multiprocessing, 1 process per AP
-  - Remote: paramiko/fabric (SSH-based process launch) (for future study)
-- **Inter-process Communication:** ZeroMQ (PUB/SUB for commands, PUSH/PULL for responses), served from the control API
-  server
-- **AP Simulator:** Python process simulating a single AP and its RTs. Each AP process runs:
-  - **Async Runtime:** asyncio event loop
-  - **AP Actor:** Manages AP heartbeat, registration, and AP-level alarms
-  - **RT Actors:** Each RT is an asyncio Task managed by the AP actor, handling registration, periodic status updates,
-    and RT-level alarms
-- **Outbound HTTP:** aiohttp sessions inside each AP simulator process
-
-Scripting/configuration of this system should be possible using postman, but there should be a way of loading a
-pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs in one go.
-
 ## Capabilities
 
 - Create / delete APs dynamically
@@ -119,18 +109,57 @@ pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs i
 ## Directory Layout
 
 ```
-control/
-  app.py          FastAPI endpoints and models
-  db.py           DB engine & get_db dependency
-worker/
-  manager.py      WorkerManager (spawns and commands worker process)
-  worker.py       Async worker (AP + RT actors)
-Dockerfile
-docker-compose.yml
-requirements.txt
-README.md
-.env.example
-.gitignore
+├── Dockerfile                  # Container build for the main simulator
+├── docs                        # Documentation and architecture diagrams
+│   ├── ap_registration.puml    # PlantUML for AP registration flow
+│   ├── ap_registration.svg     # SVG diagram for AP registration
+│   ├── architecture.puml       # PlantUML for system architecture
+│   ├── architecture.svg        # SVG diagram for system architecture
+│   ├── hub_registration.puml   # PlantUML for Hub registration flow
+│   ├── hub_registration.svg    # SVG diagram for Hub registration
+│   ├── requirements.md         # Project requirements and notes
+│   ├── rt_registration.puml    # PlantUML for RT registration flow
+│   └── rt_registration.svg     # SVG diagram for RT registration
+├── experimental                # Experimental sub-projects and demos
+│   ├── multi-ip                # Large-scale IPv6 AP/RT simulation demo
+│   │   ├── check_ipv6_which_ip.py # Check IPv6 address assignment
+│   │   ├── docker-compose.yaml     # Compose file for multi-container sim
+│   │   ├── Dockerfile              # Container for multi-ip demo
+│   │   ├── entrypoint.sh           # Entrypoint script for containers
+│   │   ├── gen_compose.py          # Generate docker-compose for scale
+│   │   ├── main.py                 # Main FastAPI server for demo
+│   │   ├── README.md               # Docs for multi-ip experiment
+│   │   └── requirements.txt        # Python deps for multi-ip demo
+│   └── zmq                     # ZeroMQ communication demo
+│       ├── zmq_client.py           # Minimal ZeroMQ client
+│       └── zmq_server.py           # Minimal ZeroMQ server
+├── main.py                     # Entrypoint for the simulator
+├── nodes                       # C++/Python node simulation code
+│   ├── cmake-build-debug           # CMake build artifacts
+│   ├── CMakeLists.txt              # CMake build config
+│   ├── cpp_src                     # C++ source for AP/RT/node
+│   │   ├── ap.cpp, ap.hpp, ...     # AP, RT, node C++ code
+│   ├── MANIFEST.in                 # Python packaging manifest
+│   ├── nodes                       # Python bindings for nodes
+│   ├── pyproject.toml              # Python build config for nodes
+│   ├── README.md                   # Docs for nodes module
+│   └── requirements-dev.txt        # Dev dependencies for nodes
+├── pyproject.toml               # Python build config (main)
+├── README.md                    # Project overview and docs
+├── requirements-dev.txt         # Dev dependencies (main)
+├── requirements.txt             # Runtime dependencies (main)
+├── src                          # Main Python source code
+│   ├── api_nms.py                   # NMS API integration
+│   ├── config.py                     # Config loading/utilities
+│   ├── controller                    # Control plane logic
+│   │   ├── api.py, app.py, ...       # FastAPI app, routes, managers
+│   ├── worker                        # Worker process logic
+│   │   ├── api.py, worker.py         # Worker API and main loop
+├── tests                        # Unit and integration tests
+│   ├── conftest.py, test_*.py       # Test modules
+└── utils                        # Utility scripts
+    ├── ap_demo.py                   # AP simulation demo script
+    └── async_create_nodes 1.py      # Node creation utility
 ```
 
 ## Quick Start (Local Dev)
