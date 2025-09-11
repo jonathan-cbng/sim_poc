@@ -12,7 +12,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from src.config import settings
 
 
-class Node(BaseModel):
+class ControllerNode(BaseModel):
     index: int
     parent_index: int | None = None
     children: dict[int, Any] = Field(default_factory=dict)
@@ -49,7 +49,7 @@ class Node(BaseModel):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
 
 
-class RT(Node):
+class RT(ControllerNode):
     auid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 
@@ -60,7 +60,7 @@ class APState(StrEnum):
     REGISTERED = auto()
 
 
-class AP(Node):
+class AP(ControllerNode):
     state: APState = APState.STARTING
     auid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS

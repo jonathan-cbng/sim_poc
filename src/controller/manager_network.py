@@ -7,11 +7,11 @@ from pydantic import Field
 from src.api_nms import NmsAuthInfo, NmsHubCreateRequest, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest
-from src.controller.common import Node
+from src.controller.common import ControllerNode
 from src.controller.manager_hub import HubManager
 
 
-class NetworkManager(Node):
+class NetworkManager(ControllerNode):
     csi: str
     csni: str  # CSNI assigned by northbound API
 
@@ -54,7 +54,7 @@ class NetworkManager(Node):
         return self.children
 
 
-class NMSManager(Node):
+class NMSManager(ControllerNode):
     children: dict[int, NetworkManager] = Field(default_factory=dict)
 
     async def add_network(self, req: NmsNetworkCreateRequest) -> int:

@@ -4,10 +4,10 @@ import uuid
 from pydantic import Field
 
 from src.controller.api import APCreateRequest
-from src.controller.common import AP, RT, Node
+from src.controller.common import AP, RT, ControllerNode
 
 
-class HubManager(Node):
+class HubManager(ControllerNode):
     children: dict[int, AP] = {}
     auid: str = Field(default_factory=uuid.uuid4)
 

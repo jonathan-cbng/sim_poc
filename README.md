@@ -103,7 +103,8 @@ sudo apt install -y build-essential cmake clang-tidy cppcheck pybind11-dev pytho
 - C++ compiler with C++23 support (e.g., g++ 13+, clang 16+)
 - CMake 3.15+
 - pybind11 (dev headers)
-- clang-tidy and cppcheck for static analysis (optional, but enforced by CMake)
+- **clang-tidy**: Enforced globally by CMake during build (required)
+- **cppcheck**: Available as a custom target (optional, run manually)
 
 ### 3. Build the C++ Extension
 
@@ -123,7 +124,18 @@ or alternatively, using CMake's build command:
 cmake -S . -B build && cmake --build build --target install -- -j$(nproc)
 ```
 
-`This will build the`accel`extension and install it into`src/worker/\` as required by the Python code and tests.
+This will build the `accel` extension and install it into `src/worker/` as required by the Python code and tests.
+
+#### Static Analysis
+
+- **clang-tidy** is enforced globally by CMake during the build process. If clang-tidy is not installed, CMake will
+  fail.
+- **cppcheck** is available as a custom target. To run cppcheck manually on the C++ sources:
+
+```bash
+cd build
+make cppcheck
+```
 
 ## Testing
 

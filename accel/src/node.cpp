@@ -20,5 +20,5 @@ Node::Node (int id)
 std::string
 Node::repr () const
 {
-  return "Node(" + std::to_string (id) + ")";
+  return "_Node(" + std::to_string (id) + ")";
 }
