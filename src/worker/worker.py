@@ -4,8 +4,8 @@ import logging
 
 import zmq
 import zmq.asyncio
-from nodes.ap import AP
 
+from src.accel import AP
 from src.config import settings
 from src.worker.api import ApAddress, APConnectInd, APRegisterInd, APRegisterReq, Message, MessageTypes
 

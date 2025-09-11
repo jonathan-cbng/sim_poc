@@ -75,6 +75,56 @@ pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs i
 - System must be testable and scriptable (e.g., via Postman or pytest).
 - Must support both local and remote AP simulation (future-proof).
 
+## Build Instructions
+
+Before running tests or using the simulator, you must set up your Python environment and build the C++ extension module
+(accel) using CMake. This is required for the Python bindings to function.
+
+### 1. Set Up Python Environment
+
+It is recommended to use a virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+# If developing or running tests, also:
+pip install -r requirements-dev.txt
+```
+
+### 2. Install System Dependencies
+
+Make sure you have the following system packages installed:
+
+```bash
+sudo apt install -y build-essential cmake clang-tidy cppcheck pybind11-dev python3-dev
+```
+
+- C++ compiler with C++23 support (e.g., g++ 13+, clang 16+)
+- CMake 3.15+
+- pybind11 (dev headers)
+- clang-tidy and cppcheck for static analysis (optional, but enforced by CMake)
+
+### 3. Build the C++ Extension
+
+From the project root:
+
+```bash
+mkdir -p build
+cd build
+cmake ..
+make -j$(nproc)
+make install
+```
+
+or alternatively, using CMake's build command:
+
+```bash
+cmake -S . -B build && cmake --build build --target install -- -j$(nproc)
+```
+
+`This will build the`accel`extension and install it into`src/worker/\` as required by the Python code and tests.
+
 ## Testing
 
 - Tests are run using `PYTHONPATH=. pytest --maxfail=3 -v`

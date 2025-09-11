@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from nodes import AP, RT
+from src.worker.accel import AP, RT
 
 # for i in range(30,0,-1):
 #     print(f"Sleeping {i}")
