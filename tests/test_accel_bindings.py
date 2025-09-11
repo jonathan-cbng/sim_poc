@@ -30,6 +30,8 @@ class TestNodeAccel:
     def test_node_repr_roundtrip(self):
         """Test that eval(repr(node)) produces an equivalent Node object."""
         node = _Node(123)
+        node_str = repr(node)
+        assert node_str == "_Node(123)"
         node2 = eval(repr(node))
         assert isinstance(node2, _Node)
         assert node2.id == node.id
@@ -46,8 +48,11 @@ class TestAPAccel:
         assert rt.ap is None or rt.ap in (0, -1)  # Accepts None or invalid id
 
     def test_rt_repr_roundtrip(self):
-        """Test that eval(repr(rt)) produces an equivalent RT object."""
+        """Test that eval(repr(rt)) produces an equivalent RT object and string is as expected."""
         rt = RT(42)
+        rt_str = repr(rt)
+        # Accept either RT(42) or a string with possible extra info, but must start with RT(42)
+        assert rt_str == "RT(42)"
         rt2 = eval(repr(rt))
         assert isinstance(rt2, RT)
         assert rt2.id == rt.id
@@ -60,8 +65,11 @@ class TestAPAccel:
         assert len(ap.rts) == 0
 
     def test_ap_repr_roundtrip(self):
-        """Test that eval(repr(ap)) produces an equivalent AP object."""
+        """Test that eval(repr(ap)) produces an equivalent AP object and string is as expected."""
         ap = AP(7)
+        ap_str = repr(ap)
+        # Accept either AP(7) or a string with possible extra info, but must start with AP(7)
+        assert ap_str == "AP(7)"
         ap2 = eval(repr(ap))
         assert isinstance(ap2, AP)
         assert ap2.id == ap.id
