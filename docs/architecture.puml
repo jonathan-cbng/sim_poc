@@ -10,11 +10,15 @@ System_Boundary(ctrl, "Control Layer") {
 }
 
 System_Boundary(sim_layer, "Execution Layer") {
-    System_Boundary(ap_sys,"AP1 Simulator (python process)") {
-        Component(ap, "AP", "Python object", "Simulated AP")
-        Component(rt1, "RT1", "Python object", "Simulated RT")
-        Component(rt2, "RT2", "Python object", "Simulated RT")
-        Component(rtn, "RTn", "Python object", "Simulated RT")
+    System_Boundary(hub_sys,"HUB1 Simulator (python process)","Up to 32 APs, each with up to 64 RTs") {
+        Component(ap1, "AP1", "Python object", "Simulated AP")
+        Component(ap1rt1, "AP1RT1", "Python object", "Simulated RT")
+        Component(ap1rt2, "AP1RT2", "Python object", "Simulated RT")
+        Component(ap1rtn, "AP1RTn", "Python object", "Simulated RT")
+        Component(ap2, "APn", "Python object", "Simulated AP")
+        Component(ap2rt1, "APnRT1", "Python object", "Simulated RT")
+        Component(ap2rt2, "APnRT2", "Python object", "Simulated RT")
+        Component(ap2rtn, "APnRTn", "Python object", "Simulated RT")
         Component(sub_socket, "SUB socket", "ZeroMQ SUB", "Connects to Controller's PUB, subscribes to own topic (`AP0001`)")
         Component(push_socket, "PUSH socket", "ZeroMQ PUSH", "Connects to Controller's PULL, sends responses")
     }
@@ -26,11 +30,16 @@ Rel(controller, pub_socket, "Sends commands via", "ZeroMQ PUB")
 Rel(controller, pull_socket, "Receives responses via", "ZeroMQ PULL (background task)")
 Rel(pub_socket, sub_socket, "Publishes commands to", "ZeroMQ PUB/SUB (topic = `AP0001`)")
 Rel(push_socket, pull_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
-Rel(ap, rt1, "Controls")
-Rel(ap, rt2, "Controls")
-Rel(ap, rtn, "Controls")
-Rel(sub_socket,ap, "Receives commands from", "ZeroMQ PUB/SUB")
-Rel_U(ap, push_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
+Rel(ap1, ap1rt1, "Controls")
+Rel(ap1, ap1rt2, "Controls")
+Rel(ap1, ap1rtn, "Controls")
+Rel(sub_socket,ap1, "Receives commands from", "ZeroMQ PUB/SUB")
+Rel_U(ap1, push_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
+Rel(ap2, ap2rt1, "Controls")
+Rel(ap2, ap2rt2, "Controls")
+Rel(ap2, ap2rtn, "Controls")
+Rel(sub_socket,ap2, "Receives commands from", "ZeroMQ PUB/SUB")
+Rel_U(ap2, push_socket, "Sends responses to", "ZeroMQ PUSH/PULL")
 HIDE_STEREOTYPE()
 
 @enduml

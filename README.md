@@ -1,38 +1,45 @@
-# Workbench Simulator: Multi-AP Single-Worker Prototype
-
-> **System Overview and Architecture**
+# Network Simulator
 
 ## Purpose
 
-A lightweight simulator that models multiple Access Points (APs) and their Remote Terminals (RTs) interacting with an
-Application Under Test (AUT).
+A lightweight simulator that models multiple Hubs, each with multiple Access Points (APs) and their Remote Terminals
+(RTs), interacting with an NMS Application Under Test (AUT).
 
 ## Architecture/Tech Stack
 
 - **Control Plane:** FastAPI (Python)
+  - REST API for user interaction (create/delete Hubs/APs/RTs, trigger alarms
+  - Manages registration of networks and hubs
 - **Process Management:**
-  - Local: Python multiprocessing, 1 process per AP
-  - Remote: paramiko/fabric (SSH-based process launch) (for future study)
-- **Inter-process Communication:** ZeroMQ (PUB/SUB for commands, PUSH/PULL for responses), served from the control API
-  server
-- **AP Simulator:** Python process simulating a single AP and its RTs. Each AP process runs:
+  - Local: Python multiprocessing, 1 process per Hub
+  - Remote: paramiko/fabric (SSH-based process launch) (for future study) **Inter-process Communication:** ZeroMQ
+    (PUB/SUB for commands, PUSH/PULL for responses), served from the control API server
+- **Hub Simulator:** Python process simulating a single Hub and its APs/RTs. Each Hub process runs:
   - **Async Runtime:** asyncio event loop
-  - **AP Actor:** Manages AP heartbeat, registration, and AP-level alarms
-  - **RT Actors:** Each RT is an asyncio Task managed by the AP actor, handling registration, periodic status updates,
+  - **AP Actors:** Each AP is an asyncio Task managed by the Hub actor, handling AP-level logic, registration, and
+    alarms
+  - **RT Actors:** Each RT is an asyncio Task managed by its AP actor, handling registration, periodic status updates,
     and RT-level alarms
-- **Outbound HTTP:** aiohttp sessions inside each AP simulator process
+- **Outbound HTTP:** aiohttp sessions inside each Hub simulator process
 - **Data Storage:** In-memory for state persistence.
+- **Scale**:
+  - 1 network (future: multiple networks)
+  - Up to 75 Hubs per Control Plane instance (1 process per Hub)
+  - Up to 32 APs per Hub
+  - Up to 64 RTs per AP
+  - Total RTs per network: 75 hubs × 32 APs × 64 RTs = 153,600 RTs per network
+  - Total APs per network: 75 hubs × 32 APs = 2,400 APs per network
 
 Scripting/configuration of this system should be possible using postman, but there should be a way of loading a
-pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs in one go.
+pre-defined configuration (e.g. JSON file) to create a large number of Hubs/APs/RTs in one go.
 
 ![System Architecture](docs/architecture.svg)
 
 ## Control Plane
 
 - Support high scalability (50,000+ nodes) using multiple workers (future-proof).
-- Dynamic AP/RT creation and deletion at runtime.
-- Configurable heartbeat intervals per AP.
+- Dynamic Hub/AP/RT creation and deletion at runtime.
+- Configurable heartbeat intervals per Hub and AP.
 - Allow scripting and bulk configuration via API or config file (inc config saving from current state).
 - Heirarchical data model:
   - Network
@@ -44,36 +51,45 @@ pre-defined configuration (e.g. JSON file) to create a large number of APs/RTs i
   - Provides API endpoints for:
     - Creating/deleting Networks, Hubs, APs, RTs
     - Configuring heartbeat intervals
-    - Triggering alarms at AP or RT level (specific IDs or percentage sampling)
+    - Triggering alarms at Hub, AP, or RT level (specific IDs or percentage sampling)
     - Querying status of all entities
   - Provides zeroMQ PUB/SUB socket for sending commands to Worker process.
   - Provides zeroMQ PUSH/PULL socket for receiving status updates from Worker process.
 
-## Worker Tasks
+## Worker (Hub Simulator) tasks
 
-- Simulates one (or maybe more, TBC) APs and all associated RTs.
+- Simulates all APs & RTs for a single hub
+- Can scale to up to 32 APs and 64 RTs per AP (2048 RTs per Hub) on a single process.
 - Simulate node registration and AP/RT heartbeats and alarm events.
-- Aggregate and report status for all APs and RTs at 1 Hz.
+- Aggregate and report status for all APs, and RTs at 1 Hz.
 - Handle commands from Control Plane (create/delete APs/RTs, trigger alarms) sent via ZeroMQ subscription socket.
 - Send status updates back to Control Plane via ZeroMQ push socket.
-- (In future) Support simluated AP/RT web server endpoints for NMS to poll/query. Each AP/RT will have its own IPv6
-  address, generated dynamically from a common prefix using network/hub/ap/rt index. Worker task will assign and manage
-  these addresses.
+
+### IP addess simulation
+
+Each worker will support simulated AP/RT web server endpoints for NMS to poll/query. Each AP and RT will have its own
+IPv6 address, generated dynamically from a common prefix using network/hub/ap/rt index as follows, assuming a /64 or
+larger prefix:
+
+- APs: <prefix>::net_index:hub_index:ap_index:ffff
+- RTs: <prefix>::net_index:hub_index:ap_index:rt_index
 
 ## API Contract (examples)
 
-- `POST /ap` — Create an AP (with optional RTs)
-- `POST /ap/{ap_id}/rt` — Add RTs to an AP
-- `POST /ap/{ap_id}/alarm` — Trigger alarms
-- `GET /ap` — List all AP statuses
-- `DELETE /ap/{ap_id}` — Remove an AP and its RTs
+- `POST /hub` — Create a Hub (with optional APs and RTs)
+- `POST /hub/{hub_id}/ap` — Add APs to a Hub
+- `POST /hub/{hub_id}/ap/{ap_id}/rt` — Add RTs to an AP
+- `POST /hub/{hub_id}/alarm` — Trigger alarms at Hub level
+- `POST /hub/{hub_id}/ap/{ap_id}/alarm` — Trigger alarms at AP or RT level
+- `GET /hub` — List all Hub statuses
+- `DELETE /hub/{hub_id}` — Remove a Hub and its APs/RTs
 
 ## Constraints
 
 - All operations must be possible at runtime (no restarts).
 - Heartbeat and status aggregation must not block other operations.
 - System must be testable and scriptable (e.g., via Postman or pytest).
-- Must support both local and remote AP simulation (future-proof).
+- Must support both local and remote Hub simulation (future-proof).
 
 ## Build Instructions
 
@@ -147,22 +163,23 @@ make cppcheck
 
 ## Example Scenario
 
-1. User creates 10 APs, each with 64 RTs.
-2. User triggers a 25% RT alarm on AP 3.
-3. User deletes AP 5; all its RTs are removed.
-4. System continues to aggregate and report status for remaining APs/RTs.
+1. User creates 10 Hubs, each with 64 APs and 64 RTs.
+2. User triggers a 25% RT alarm on AP 3 of Hub 1.
+3. User deletes Hub 5; all its APs and RTs are removed.
+4. System continues to aggregate and report status for remaining Hubs/APs/RTs.
 
 ## Output
 
 - All API responses must be JSON.
-- Status endpoints must return up-to-date heartbeat and alarm state for each AP/RT.
+- Status endpoints must return up-to-date heartbeat and alarm state for each Hub/AP/RT.
 
 ## Capabilities
 
-- Create / delete APs dynamically
-- Configure per-AP heartbeat interval
+- Create / delete Hubs and APs dynamically
+- Configure per-Hub and per-AP heartbeat interval
 - Create initial RTs with AP or add more later
 - RT & AP registration logic stubs (POST to AUT endpoints)
+- Hub-level alarms
 - AP-level alarms
 - RT-level alarms (specific IDs or percentage sampling)
 - Status aggregation (1 Hz) from worker → control API
@@ -239,42 +256,60 @@ Control API: http://localhost:8000
 
 ## Core Endpoints
 
-| Method | Path              | Purpose                                            |
-| ------ | ----------------- | -------------------------------------------------- |
-| POST   | /ap               | Create & start an AP (optionally with initial RTs) |
-| GET    | /ap               | List statuses of all APs                           |
-| GET    | /ap/{ap_id}       | Get status for a single AP                         |
-| POST   | /ap/{ap_id}/rt    | Add RTs to an existing AP                          |
-| POST   | /ap/{ap_id}/alarm | Trigger AP-level or RT-level alarms                |
-| DELETE | /ap/{ap_id}       | Stop and remove an AP and all underlying RTs       |
+| Method | Path                        | Purpose                                                    |
+| ------ | --------------------------- | ---------------------------------------------------------- |
+| POST   | /hub                        | Create & start a Hub (optionally with initial APs and RTs) |
+| GET    | /hub                        | List statuses of all Hubs                                  |
+| GET    | /hub/{hub_id}               | Get status for a single Hub                                |
+| POST   | /hub/{hub_id}/ap            | Add APs to an existing Hub                                 |
+| POST   | /hub/{hub_id}/ap/{ap_id}/rt | Add RTs to an AP                                           |
+| POST   | /hub/{hub_id}/alarm         | Trigger Hub-level or AP-level alarms                       |
+| DELETE | /hub/{hub_id}               | Stop and remove a Hub and all underlying APs and RTs       |
 
-### Example: Create an AP
+### Example: Create a Hub
 
 ```bash
-curl -X POST http://localhost:8000/ap \
+curl -X POST http://localhost:8000/hub \
   -H "Content-Type: application/json" \
   -d '{
-    "ap_id": "1",
+    "hub_id": "1",
     "aut_base_url": "http://localhost:8080",
     "heartbeat_seconds": 10,
-    "rt_count": 5
+    "ap_count": 5,
+    "rt_count": 10
   }'
 ```
 
-### Add RTs
+### Add APs to a Hub
 
 ```bash
-curl -X POST http://localhost:8000/ap/{ap_id}/rts \
+curl -X POST http://localhost:8000/hub/{hub_id}/aps \
   -H "Content-Type: application/json" \
   -d '{"add": 3}'
 ```
 
+### Add RTs to an AP
+
+```bash
+curl -X POST http://localhost:8000/hub/{hub_id}/ap/{ap_id}/rts \
+  -H "Content-Type: application/json" \
+  -d '{"add": 5}'
+```
+
 ### Trigger Alarms
+
+Hub-level:
+
+```bash
+curl -X POST http://localhost:8000/hub/{hub_id}/alarm \
+  -H "Content-Type: application/json" \
+  -d '{"target":"hub"}'
+```
 
 AP-level:
 
 ```bash
-curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
+curl -X POST http://localhost:8000/hub/{hub_id}/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"ap"}'
 ```
@@ -282,7 +317,7 @@ curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
 25% of RTs:
 
 ```bash
-curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
+curl -X POST http://localhost:8000/hub/{hub_id}/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"rt","percent":25}'
 ```
@@ -290,21 +325,21 @@ curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
 Specific RT IDs:
 
 ```bash
-curl -X POST http://localhost:8000/ap/{ap_id}/alarm \
+curl -X POST http://localhost:8000/hub/{hub_id}/ap/{ap_id}/alarm \
   -H "Content-Type: application/json" \
   -d '{"target":"rt","rt_ids":[0,2,5]}'
 ```
 
-### Delete AP
+### Delete a Hub
 
 ```bash
-curl -X DELETE http://localhost:8000/ap/{ap_id}
+curl -X DELETE http://localhost:8000/hub/{hub_id}
 ```
 
 ## Scaling Roadmap
 
-1. Current: Single worker, many AP actors (sufficient for dev / moderate load).
-2. Multi-worker: Shard APs across processes via hashing (extend WorkerManager).
+1. Current: Single worker, many Hub actors (sufficient for dev / moderate load).
+2. Multi-worker: Shard Hubs across processes via hashing (extend WorkerManager).
 3. External transport: Replace MP queues with Redis / NATS / RabbitMQ if multi-host.
 4. Metrics: Add Prometheus exposition in control process.
 5. Logging: Introduce structured JSON logs and correlation IDs.
