@@ -17,10 +17,10 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
 from src.config import settings
-from src.controller.manager_ap import ap_ctrl
 from src.controller.routes_ap import ap_router
 from src.controller.routes_hub import hub_router
 from src.controller.routes_network import network_router
+from src.controller.worker_ctrl import worker_ctrl
 
 if settings.SSL_CERT is None:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -33,11 +33,11 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ap_ctrl.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
-    listener_task = asyncio.create_task(ap_ctrl.listener())
+    worker_ctrl.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
+    listener_task = asyncio.create_task(worker_ctrl.listener())
     yield
     listener_task.cancel()
-    ap_ctrl.teardown_zmq(app)
+    worker_ctrl.teardown_zmq(app)
 
 
 def get_app():

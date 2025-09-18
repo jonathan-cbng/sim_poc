@@ -1,28 +1,27 @@
 import logging
 
+import zmq
 import zmq.asyncio
 
-from src.controller.common import AP, APState
-from src.controller.manager_network import nms
-from src.worker.api import APConnectInd, APRegisterInd, APRegisterReq, Message, MessageTypes
+from src.controller.managers import APManager, HubManager, NodeState, nms
+from src.worker.worker_api import APRegisterInd, HubConnectInd, Message, MessageTypes
 
 
-class APManager:
+class WorkerCtrl:
+    """Controller for managing communication with worker processes via ZeroMQ."""
+
     zmq_ctx: zmq.asyncio.Context = None
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
 
-    def handle_ap_connect_ind(self, msg: APConnectInd):
-        ap = msg.ap_address.get_ap(nms)
-        ap.state = APState.CONNECTED
-        logging.info(f"AP connected: {msg.ap_address}")
-        register_msg = APRegisterReq()
-        self.send_to_ap(ap, register_msg)
+    def handle_hub_connect_ind(self, msg: HubConnectInd):
+        hub: HubManager = nms.get_node(msg.address)
+        hub.on_connect_ind(msg)
 
     def handle_ap_register_ind(self, msg: APRegisterInd):
-        ap = msg.ap_address.get_ap(nms)
-        logging.info(f"AP registered: {msg.ap_address}")
-        ap.state = APState.REGISTERED
+        ap = msg.address.get_ap(nms)
+        logging.info(f"AP registered: {msg.address}")
+        ap.state = NodeState.REGISTERED
 
     async def listener(self):
         """
@@ -39,14 +38,14 @@ class APManager:
                 logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
                 continue
             match msg.msg_type:
-                case MessageTypes.AP_CONNECT_IND:
-                    self.handle_ap_connect_ind(msg)
+                case MessageTypes.HUB_CONNECT_IND:
+                    self.handle_hub_connect_ind(msg)
                 case MessageTypes.AP_REGISTER_IND:
                     self.handle_ap_register_ind(msg)
                 case _:
                     logging.warning(f"Unknown event type: {msg.msg_type}")
 
-    def send_to_ap(self, ap: AP, msg):
+    def send_to_ap(self, ap: APManager, msg):
         logging.debug("Tx ctrl->%s: %r", ap._tag, msg)
         msg = msg if isinstance(msg, Message) else Message(msg)
         pub_message = f"{ap._tag} {msg.model_dump_json()}"
@@ -88,4 +87,4 @@ class APManager:
             self.zmq_ctx = None
 
 
-ap_ctrl = APManager()
+worker_ctrl = WorkerCtrl()

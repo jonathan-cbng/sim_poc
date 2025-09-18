@@ -94,9 +94,9 @@ class NmsNetworkCreateRequest(BaseModel):
     name: str = Field(default="Test Network")
     details: str = Field(default="No details")
     timezone: str = Field(default="UTC")
-    customer_contact_name: str = Field(default="Billy Lardner")
-    customer_contact_title: str = Field(default="SE")
-    customer_contact_email: str = Field(default="tester@cbng.co.uk")
+    customer_contact_name: str = Field(default="Tester McTestface")
+    customer_contact_title: str = Field(default="Tester")
+    customer_contact_email: str = Field(default=f"tester@{settings.EMAIL_DOMAIN}")
     customer_contact_mobile: str = Field(default="01234567890")
     customer_contact_info: str = Field(default="N/A")
     network_area: NmsNetworkArea = Field(default_factory=NmsNetworkArea)
@@ -122,3 +122,58 @@ class NmsHubCreateRequest(BaseModel):
         self.id = self.id or f"ID_{self.auid}"
         self.name = self.name or f"NAME_{self.auid}"
         return self
+
+
+class NmsAPConfiguration(BaseModel):
+    ap_du_beam_profile_id: int = 4
+    ap_du_dlmodulation: str = "QAM64"
+    ap_du_isulcaenbld: bool = True
+    ap_du_maxdlmcs: int = 25
+    ap_du_nssbpwr: int = 20
+    ap_du_p0nominal_pucch: int = -96
+    ap_du_p0nominal_pusch: int = -100
+    ap_du_prachcfgidx: int = 117
+    ap_du_rf_channel_centre_frequency_ghz: str = "38.0"
+    ap_du_rf_channel_downstream_carrier_bandwidth_mhz: int = 200
+    ap_du_rf_channel_downstream_num_carriers: int = 4
+    ap_du_rf_channel_upstream_carrier_bandwidth_mhz: int = 200
+    ap_du_rf_channel_upstream_num_carriers: int = 2
+    ap_du_zerocorrelationzonecfg: int = 0
+    ap_rc_rt_management_csr_ippdu_gateway: str = ""
+    ap_rc_rt_management_rt_ippdu_gateway: str = ""
+    ap_system_ssh_password: str = ""
+    ap_system_ssh_user: str = ""
+    frequency_band_ghz: int = 39
+
+
+class NmsAPCreateRequest(BaseModel):
+    auid: str = Field(default_factory=shortuuid.uuid)
+    allocated_auid: str = "No"
+    id: str
+    name: str
+    parent_auid: str
+    node_status: str = "Planned"
+    node_priority: str = "Bronze"
+    ap_system_transmitter_enabled: bool = False
+    azimuth_deg: int = 0
+    elevation_deg: int = 90
+    height_mast_m: int = 20
+    height_asl_m: int = 21
+    notes: str = "NONE"
+    configuration: NmsAPConfiguration = NmsAPConfiguration()
+
+
+class RegisterAPSecretHeaders(BaseModel):
+    gnodebid: str
+    secret: str
+
+
+class RegisterAPCandidateRequest(BaseModel):
+    csi: str
+    installer_key: str
+    chosen_auid: str
+
+
+class RegisterAPCandidateHeaders(BaseModel):
+    gnodebid: str
+    secret: str

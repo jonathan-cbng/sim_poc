@@ -32,5 +32,13 @@ class Settings(BaseSettings):
 
     MAX_DIFF_DEG: float = 0.4  # Maximum degree difference for randomizing lat/lon
 
+    CSI: str = "CBNG001"
+    EMAIL_DOMAIN: str = "cbng.co.uk"
+
+    INSTALLER_KEY: str = "test-installer-key"
+    VERIFY_SSL_CERT: bool = False
+
+    HTTPX_TIMEOUT: int = 10  # seconds
+
 
 settings = Settings()

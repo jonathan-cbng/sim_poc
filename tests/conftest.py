@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from src.config import settings
 from src.controller.app import get_app
-from src.controller.manager_network import nms
+from src.controller.managers import nms
 
 
 @pytest.fixture(scope="session")
