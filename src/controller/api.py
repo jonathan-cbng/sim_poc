@@ -1,15 +1,45 @@
+"""
+API request/response models for controller endpoints.
+"""
+
+#######################################################################################################################
+# Imports
+#######################################################################################################################
 from pydantic import BaseModel, Field
 
 from src.config import settings
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+# ...existing code...
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class Result(BaseModel):
+    """
+    Response model for simple result messages.
+
+    Args:
+        message (str): The result message.
+    """
+
     message: str
 
 
 class APCreateRequest(BaseModel):
-    heartbeat_seconds: int = Field(settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds")
+    """
+    Request model for creating an AP.
 
+    Args:
+        heartbeat_seconds (int): Heartbeat interval in seconds.
+        num_rts (int): Number of RTs to create under this AP.
+        rt_heartbeat_seconds (int): Heartbeat interval for child RTs.
+    """
+
+    heartbeat_seconds: int = Field(settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds")
     num_rts: int = Field(settings.DEFAULT_RTS_PER_AP, description="Number of RTS to create under this AP")
     rt_heartbeat_seconds: int = Field(
         settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds for child RTs"
@@ -17,6 +47,16 @@ class APCreateRequest(BaseModel):
 
 
 class HubCreateRequest(BaseModel):
+    """
+    Request model for creating a Hub.
+
+    Args:
+        num_aps (int): Number of APs to create under this Hub.
+        num_rts_per_ap (int): Number of RTs per AP.
+        heartbeat_seconds (int): Heartbeat interval for Hub.
+        rt_heartbeat_seconds (int): Heartbeat interval for child RTs.
+    """
+
     num_aps: int = settings.DEFAULT_APS_PER_HUB
     num_rts_per_ap: int = settings.DEFAULT_RTS_PER_AP
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
@@ -24,6 +64,19 @@ class HubCreateRequest(BaseModel):
 
 
 class NetworkCreateRequest(BaseModel):
+    """
+    Request model for creating a Network.
+
+    Args:
+        csi (str): CSI (customer ID).
+        email_domain (str): Email domain for users in this network.
+        hubs (int): Number of Hubs to create under this network.
+        aps_per_hub (int): Number of APs to create under each Hub.
+        ap_heartbeat_seconds (int): Heartbeat interval for child APs.
+        rts_per_ap (int): Number of RTs to create under each AP.
+        rt_heartbeat_seconds (int): Heartbeat interval for child RTs.
+    """
+
     csi: str = Field(default=f"{settings.CSI}", description="CSI (customer ID)", max_length=32)
     email_domain: str = Field(
         default=f"{settings.EMAIL_DOMAIN}", description="Email domain for users in this network", max_length=64
@@ -37,3 +90,8 @@ class NetworkCreateRequest(BaseModel):
     rt_heartbeat_seconds: int = Field(
         settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds for child RTs"
     )
+
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################

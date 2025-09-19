@@ -1,3 +1,10 @@
+"""
+Worker controller for managing communication with worker processes via ZeroMQ.
+"""
+
+#######################################################################################################################
+# Imports
+#######################################################################################################################
 import logging
 
 import zmq
@@ -6,24 +13,46 @@ import zmq.asyncio
 from src.controller.managers import APManager, HubManager, nms
 from src.worker.worker_api import APRegisterInd, HubConnectInd, Message, MessageTypes
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+# ...existing code...
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class WorkerCtrl:
-    """Controller for managing communication with worker processes via ZeroMQ."""
+    """
+    Controller for managing communication with worker processes via ZeroMQ.
+    """
 
     zmq_ctx: zmq.asyncio.Context = None
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
 
-    def handle_hub_connect_ind(self, msg: HubConnectInd):
+    def handle_hub_connect_ind(self, msg: HubConnectInd) -> None:
+        """
+        Handle HubConnectInd message from worker.
+
+        Args:
+            msg (HubConnectInd): The hub connect indication message.
+        """
         hub: HubManager = nms.get_node(msg.address)
         hub.on_connect_ind(msg)
 
-    def handle_ap_register_ind(self, msg: APRegisterInd):
+    def handle_ap_register_ind(self, msg: APRegisterInd) -> None:
+        """
+        Handle APRegisterInd message from worker.
+
+        Args:
+            msg (APRegisterInd): The AP register indication message.
+        """
         ap: APManager = nms.get_node(msg.address)
         logging.info(f"AP registered: {msg.address}")
         ap.on_register(msg)
 
-    async def listener(self):
+    async def listener(self) -> None:
         """
         Listens for incoming messages on the PULL socket and processes them.
         """
@@ -45,46 +74,56 @@ class WorkerCtrl:
                 case _:
                     logging.warning(f"Unknown event type: {msg.msg_type}")
 
-    def send_to_ap(self, ap: APManager, msg):
+    def send_to_ap(self, ap: APManager, msg) -> None:
+        """
+        Send a message to an AP via the PUB socket.
+
+        Args:
+            ap (APManager): The AP manager instance.
+            msg: The message to send.
+        """
         logging.debug("Tx ctrl->%s: %r", ap._tag, msg)
         msg = msg if isinstance(msg, Message) else Message(msg)
         pub_message = f"{ap._tag} {msg.model_dump_json()}"
         self.zmq_pub.send_string(pub_message)
 
-    def setup_zmq(self, app, pub_port, pull_port):
+    def setup_zmq(self, app, pub_port: int, pull_port: int) -> None:
         """
         Sets up ZeroMQ PUB and PULL sockets and binds them to the specified ports.
 
-        :param app: FastAPI application instance
-        :param pub_port: Port number for the PUB socket
-        :param pull_port: Port number for the PULL socket
-        :return: Tuple containing the PUB and PULL sockets
+        Args:
+            app: FastAPI application instance
+            pub_port (int): Port number for the PUB socket
+            pull_port (int): Port number for the PULL socket
         """
-        ctx = zmq.asyncio.Context()
-        pub = ctx.socket(zmq.PUB)
-        pub.bind(f"tcp://*:{pub_port}")
-        pull = ctx.socket(zmq.PULL)
-        pull.bind(f"tcp://*:{pull_port}")
-        self.zmq_ctx = ctx
-        self.zmq_pub = pub
-        self.zmq_pull = pull
+        self.zmq_ctx = zmq.asyncio.Context()
+        self.zmq_pub = self.zmq_ctx.socket(zmq.PUB)
+        self.zmq_pub.bind(f"tcp://*:{pub_port}")
+        self.zmq_pull = self.zmq_ctx.socket(zmq.PULL)
+        self.zmq_pull.bind(f"tcp://*:{pull_port}")
+        app.state.zmq_ctx = self.zmq_ctx
+        app.state.zmq_pub = self.zmq_pub
+        app.state.zmq_pull = self.zmq_pull
 
-        return pub, pull
-
-    def teardown_zmq(self, app):
+    def teardown_zmq(self, app) -> None:
         """
-        Closes the PUB and PULL sockets and terminates the context.
-        :param app: FastAPI application instance
+        Tears down ZeroMQ sockets and context.
+
+        Args:
+            app: FastAPI application instance
         """
         if self.zmq_pub:
             self.zmq_pub.close()
-            self.zmq_pub = None
         if self.zmq_pull:
             self.zmq_pull.close()
-            self.zmq_pull = None
         if self.zmq_ctx:
             self.zmq_ctx.term()
-            self.zmq_ctx = None
+        app.state.zmq_ctx = None
+        app.state.zmq_pub = None
+        app.state.zmq_pull = None
 
 
 worker_ctrl = WorkerCtrl()
+#######################################################################################################################
+# End of file
+#######################################################################################################################

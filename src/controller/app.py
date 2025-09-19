@@ -8,6 +8,9 @@ delegated to the controller and router modules. This makes testing easier using 
 fixtures and TestClient instances.
 """
 
+#######################################################################################################################
+# Imports
+#######################################################################################################################
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -22,6 +25,9 @@ from src.controller.routes_hub import hub_router
 from src.controller.routes_network import network_router
 from src.controller.worker_ctrl import worker_ctrl
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
 if settings.SSL_CERT is None:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -30,9 +36,22 @@ logging.basicConfig(
     format="%(levelname)s: %(asctime)s %(filename)s:%(lineno)d - %(message)s",
 )
 
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan context manager to set up and tear down background tasks and resources.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+
+    Yields:
+        None
+    """
     worker_ctrl.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
     listener_task = asyncio.create_task(worker_ctrl.listener())
     yield
@@ -40,7 +59,13 @@ async def lifespan(app: FastAPI):
     worker_ctrl.teardown_zmq(app)
 
 
-def get_app():
+def get_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application instance.
+
+    Returns:
+        FastAPI: The configured FastAPI app.
+    """
     app = FastAPI(lifespan=lifespan, title="NMS network simulator", version="0.0.1")
     app.include_router(network_router)
     app.include_router(hub_router)
@@ -49,8 +74,16 @@ def get_app():
     @app.get("/", include_in_schema=False)
     def root():
         """
-        Redirects to API docs
+        Redirects to API docs.
+
+        Returns:
+            RedirectResponse: Redirect to /docs.
         """
         return RedirectResponse(url="/docs")
 
     return app
+
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################
