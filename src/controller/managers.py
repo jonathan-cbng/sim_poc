@@ -142,6 +142,7 @@ class NetworkManager(ControllerNode):
                 resp = await client.post(url, json=hub_req.model_dump())
                 resp.raise_for_status()
             except httpx.HTTPError as e:
+                del self.children[index]
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
         # Add required number of APs
