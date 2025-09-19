@@ -53,9 +53,20 @@ class Address(BaseModel):
         return self._tag
 
 
-class HubConnectInd(BaseModel):
+class BaseMessageBody(BaseModel):
     """
-    Message indicating an AP has connected.
+    Base class for all message body models.
+
+    Attributes:
+        address (Address): The address of the node associated with the message.
+    """
+
+    address: Address
+
+
+class HubConnectInd(BaseMessageBody):
+    """
+    Message indicating a hub has connected.
 
     Attributes:
         msg_type (Literal['ap_connect_ind']): Discriminator for this message type.
@@ -63,10 +74,9 @@ class HubConnectInd(BaseModel):
     """
 
     msg_type: Literal[MessageTypes.HUB_CONNECT_IND] = MessageTypes.HUB_CONNECT_IND
-    address: Address
 
 
-class APRegisterReq(BaseModel):
+class APRegisterReq(BaseMessageBody):
     """
     Message requesting AP registration.
 
@@ -79,7 +89,7 @@ class APRegisterReq(BaseModel):
     num_rts: int = settings.DEFAULT_RTS_PER_AP
 
 
-class APRegisterInd(BaseModel):
+class APRegisterInd(BaseMessageBody):
     """
     Message indicating an AP has been registered.
 
@@ -90,7 +100,6 @@ class APRegisterInd(BaseModel):
     """
 
     msg_type: Literal[MessageTypes.AP_REGISTER_IND] = MessageTypes.AP_REGISTER_IND
-    address: Address
     registered_at: str
 
 

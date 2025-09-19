@@ -3,30 +3,76 @@ import contextlib
 import logging
 import subprocess
 from enum import StrEnum, auto
+from typing import Any
 
 import httpx
+import shortuuid
 from fastapi import HTTPException, status
-from pydantic import Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.api_nms import NmsAuthInfo, NmsHubCreateRequest, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest, NetworkCreateRequest
-from src.controller.common import ControllerNode
 from src.worker.worker_api import Address, HubConnectInd
 
 
-class NodeState(StrEnum):
+class ControllerNode(BaseModel):
+    index: int
+    parent_index: int | None = None
+    children: dict[int, Any] = Field(default_factory=dict)
+    address: Address = Field(description="The address of this node - sort of a fully qualified name")
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
+
+    def get_index(self, requested: int = -1) -> int:
+        """
+        Returns the lowest non-negative integer not in used_indices.
+        """
+        if requested < 0:
+            used_indices = set(self.children.keys())
+            idx = 0
+            while idx in used_indices:
+                idx += 1
+            return idx
+        elif requested in self.children:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Index {requested} already in use")
+        else:
+            return requested
+
+    def get_child_or_404(self, index: int) -> Any:
+        try:
+            return self.children[index]
+        except KeyError as err:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"index {index} not found") from err
+
+    def remove_child(self, index) -> None:
+        """
+        Stop and remove a Hub and all underlying APs and RTs.
+        """
+        try:
+            logging.info("%s:%d: Removing child %d", self.__class__.__name__, self.index, index)
+            del self.children[index]
+        except KeyError as err:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
+
+
+class RTState(StrEnum):
     UNREGISTERED = auto()
     REGISTERED = auto()
 
 
 class RTManager(ControllerNode):
-    state: NodeState = NodeState.UNREGISTERED
+    state: RTState = RTState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 
 
+class APState(StrEnum):
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+
+
 class APManager(ControllerNode):
-    state: NodeState = NodeState.UNREGISTERED
+    state: APState = APState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
     hub_auid: str  # AUID of parent Hub, filled in when the AP is created registers
 
@@ -35,6 +81,11 @@ class APManager(ControllerNode):
 
 
 class HubManager(ControllerNode):
+    class State(StrEnum):
+        UNREGISTERED = auto()
+        REGISTERED = auto()
+
+    state: State = State.UNREGISTERED
     children: dict[int, APManager] = {}
 
     _worker: subprocess.Popen | None = PrivateAttr(default=None)
@@ -120,9 +171,15 @@ class HubManager(ControllerNode):
             self.stop_worker()
 
 
+class NetworkState(StrEnum):
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+
+
 class NetworkManager(ControllerNode):
     csi: str
     csni: str  # CSNI assigned by northbound API
+    state: NetworkState = NetworkState.UNREGISTERED
 
     children: dict[int, HubManager] = Field(default_factory=dict)
 
@@ -186,7 +243,9 @@ class NMSManager(ControllerNode):
         csni = result["csni"]
         index = self.get_index(-1)
         address = Address(net=index)
-        net_mgr = NetworkManager(index=index, parent_index=self.index, address=address, csi=req.csi, csni=csni)
+        net_mgr = NetworkManager(
+            index=index, parent_index=self.index, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED
+        )
         self.children[index] = net_mgr
         logging.info("Registered network %s to customer %s with northbound API", csni, req.csi)
 

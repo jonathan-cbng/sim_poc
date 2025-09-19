@@ -3,7 +3,7 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.controller.managers import APManager, HubManager, NodeState, nms
+from src.controller.managers import APManager, HubManager, nms
 from src.worker.worker_api import APRegisterInd, HubConnectInd, Message, MessageTypes
 
 
@@ -19,9 +19,9 @@ class WorkerCtrl:
         hub.on_connect_ind(msg)
 
     def handle_ap_register_ind(self, msg: APRegisterInd):
-        ap = msg.address.get_ap(nms)
+        ap: APManager = nms.get_node(msg.address)
         logging.info(f"AP registered: {msg.address}")
-        ap.state = NodeState.REGISTERED
+        ap.on_register(msg)
 
     async def listener(self):
         """

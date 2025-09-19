@@ -169,10 +169,8 @@ class Worker:
             return None
 
     async def read_loop(self):
-        # Send 'connected' message using Pydantic class
+        await self.send_to_controller(HubConnectInd(address=self.address))
         logging.debug("%s starting read loop", self.address.tag)
-        msg = HubConnectInd(address=self.address)
-        await self.send_to_controller(msg)
         # Main loop: wait for messages from controller
         while True:
             try:
