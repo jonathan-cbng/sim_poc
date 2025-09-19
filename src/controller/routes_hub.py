@@ -26,8 +26,8 @@ hub_router = APIRouter(prefix="/network/{network_idx}/hub", tags=["Hub Managemen
 
 @hub_router.post("/", status_code=HTTP_201_CREATED)
 async def create_hub(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    req: Annotated[HubCreateRequest, Body(description="Hub creation request")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    req: Annotated[HubCreateRequest, Body(description="Hub creation request")],
 ) -> int:
     """
     Create and start a Hub (optionally with initial APs and RTs).
@@ -40,13 +40,15 @@ async def create_hub(
         int: The ID of the newly created Hub.
     """
     network = nms.get_network(network_idx)
-    new_id = await network.add_hub(network_idx, req)
+    new_id = await network.add_hub(req)
     logging.info(f"Created Hub {new_id} in network {network_idx}")
     return new_id
 
 
 @hub_router.get("/")
-async def list_hubs(network_idx: Annotated[int, Path(description="Network index")] = ...) -> dict[int, HubManager]:
+async def list_hubs(
+    network_idx: Annotated[int, Path(description="Network index")],
+) -> dict[int, HubManager]:
     """
     List all Hubs in a network.
 
@@ -63,8 +65,8 @@ async def list_hubs(network_idx: Annotated[int, Path(description="Network index"
 
 @hub_router.get("/{idx}")
 async def get_hub(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    idx: Annotated[int, Path(description="Hub index")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    idx: Annotated[int, Path(description="Hub index")],
 ) -> HubManager:
     """
     Get status for a single Hub.
@@ -86,8 +88,8 @@ async def get_hub(
 
 @hub_router.delete("/{idx}")
 async def delete_hub(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    idx: Annotated[int, Path(description="Hub index")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    idx: Annotated[int, Path(description="Hub index")],
 ) -> Result:
     """
     Stop and remove a Hub and all underlying APs and RTs.

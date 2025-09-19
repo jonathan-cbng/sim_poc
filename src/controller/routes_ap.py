@@ -26,9 +26,9 @@ ap_router = APIRouter(prefix="/network/{network_idx}/hub/{hub_idx}/ap", tags=["A
 
 @ap_router.post("/", status_code=HTTP_201_CREATED)
 async def create_ap(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    hub_idx: Annotated[int, Path(description="Hub index")] = ...,
-    req: Annotated[APCreateRequest, Body(description="AP creation request")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    hub_idx: Annotated[int, Path(description="Hub index")],
+    req: Annotated[APCreateRequest, Body(description="AP creation request")],
 ) -> int:
     """
     Create and start an AP (optionally with initial RTs).
@@ -50,8 +50,8 @@ async def create_ap(
 
 @ap_router.get("/")
 async def list_aps(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    hub_idx: Annotated[int, Path(description="Hub index")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    hub_idx: Annotated[int, Path(description="Hub index")],
 ) -> dict[int, APManager]:
     """
     List all APs in a Hub.
@@ -71,9 +71,9 @@ async def list_aps(
 
 @ap_router.get("/{idx}")
 async def get_ap(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    hub_idx: Annotated[int, Path(description="Hub index")] = ...,
-    idx: Annotated[int, Path(description="AP index")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    hub_idx: Annotated[int, Path(description="Hub index")],
+    idx: Annotated[int, Path(description="AP index")],
 ) -> APManager:
     """
     Get status for a single AP.
@@ -97,9 +97,9 @@ async def get_ap(
 
 @ap_router.delete("/{idx}")
 async def delete_ap(
-    network_idx: Annotated[int, Path(description="Network index")] = ...,
-    hub_idx: Annotated[int, Path(description="Hub index")] = ...,
-    idx: Annotated[int, Path(description="AP index")] = ...,
+    network_idx: Annotated[int, Path(description="Network index")],
+    hub_idx: Annotated[int, Path(description="Hub index")],
+    idx: Annotated[int, Path(description="AP index")],
 ) -> Result:
     """
     Stop and remove an AP and all underlying RTs.

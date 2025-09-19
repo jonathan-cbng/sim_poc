@@ -26,7 +26,7 @@ network_router = APIRouter(prefix="/network", tags=["Network Management"])
 
 @network_router.post("/", status_code=HTTP_201_CREATED)
 async def create_network(
-    req: Annotated[NetworkCreateRequest, Body(description="Network creation request")] = ...,
+    req: Annotated[NetworkCreateRequest, Body(description="Network creation request")],
 ) -> int:
     """
     Create and start a Network (optionally with initial Hubs).
@@ -55,7 +55,7 @@ async def list_networks() -> dict[int, NetworkManager]:
 
 
 @network_router.get("/{idx}")
-async def get_network(idx: Annotated[int, Path(description="Network index")] = ...) -> NetworkManager:
+async def get_network(idx: Annotated[int, Path(description="Network index")]) -> NetworkManager:
     """
     Get status for a single Network.
 
@@ -73,7 +73,7 @@ async def get_network(idx: Annotated[int, Path(description="Network index")] = .
 
 
 @network_router.delete("/{idx}")
-async def delete_network(idx: Annotated[int, Path(description="Network index")] = ...) -> Result:
+async def delete_network(idx: Annotated[int, Path(description="Network index")]) -> Result:
     """
     Stop and remove a Network and all underlying Hubs, APs, and RTs.
 
