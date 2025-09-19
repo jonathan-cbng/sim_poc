@@ -23,10 +23,10 @@ class TestMessageClasses:
         Message wrapper.
         """
         addr = Address(net=1, hub=2, ap=3)
-        conn_ind = Message(HubConnectInd(ap_address=addr))
+        conn_ind = Message(HubConnectInd(address=addr))
         data = conn_ind.model_dump_json()
         result = Message.model_validate_json(data).root
-        assert result.msg_type == "ap_connect_ind"
+        assert result.msg_type == "hub_connect_ind"
         assert isinstance(result, HubConnectInd)
 
     def test_message_ap_register_req(self):
@@ -34,7 +34,8 @@ class TestMessageClasses:
         Checks that the discriminator (msg_type) correctly identifies and decodes an APRegisterReq message via the
         Message wrapper.
         """
-        msg = APRegisterReq()
+        addr = Address(net=1, hub=2, ap=3)
+        msg = APRegisterReq(address=addr, hub_auid="hub_auid", num_rts=5)
         reg_req = Message(msg)
         data = reg_req.model_dump_json()
         result = Message.model_validate_json(data).root
@@ -47,7 +48,7 @@ class TestMessageClasses:
         Message wrapper.
         """
         addr = Address(net=1, hub=2, ap=3)
-        reg_ind = Message(APRegisterInd(ap_address=addr, registered_at="2025-09-08T12:00:00Z"))
+        reg_ind = Message(APRegisterInd(address=addr, registered_at="2025-09-08T12:00:00Z"))
         data = reg_ind.model_dump_json()
         result = Message.model_validate_json(data).root
         assert result.msg_type == "ap_register_ind"
@@ -58,6 +59,6 @@ class TestMessageClasses:
         Checks that an unknown msg_type in the discriminator raises a ValidationError when decoding via the
         Message wrapper.
         """
-        bad_json = '{"msg_type": "unknown", "ap_address": {"net": 1, "hub": 2, "ap": 3}}'
+        bad_json = '{"msg_type": "unknown", "address": {"net": 1, "hub": 2, "ap": 3}}'
         with pytest.raises(ValidationError):
             Message.model_validate_json(bad_json)

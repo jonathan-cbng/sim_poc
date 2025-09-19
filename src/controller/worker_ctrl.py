@@ -10,8 +10,8 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.controller.managers import APManager, HubManager, nms
-from src.worker.worker_api import APRegisterInd, HubConnectInd, Message, MessageTypes
+from src.controller.managers import APManager, nms
+from src.worker.worker_api import Message, MessageTypes
 
 #######################################################################################################################
 # Globals
@@ -31,27 +31,6 @@ class WorkerCtrl:
     zmq_pub: zmq.asyncio.Socket = None
     zmq_pull: zmq.asyncio.Socket = None
 
-    def handle_hub_connect_ind(self, msg: HubConnectInd) -> None:
-        """
-        Handle HubConnectInd message from worker.
-
-        Args:
-            msg (HubConnectInd): The hub connect indication message.
-        """
-        hub: HubManager = nms.get_node(msg.address)
-        hub.on_connect_ind(msg)
-
-    def handle_ap_register_ind(self, msg: APRegisterInd) -> None:
-        """
-        Handle APRegisterInd message from worker.
-
-        Args:
-            msg (APRegisterInd): The AP register indication message.
-        """
-        ap: APManager = nms.get_node(msg.address)
-        logging.info(f"AP registered: {msg.address}")
-        ap.on_register(msg)
-
     async def listener(self) -> None:
         """
         Listens for incoming messages on the PULL socket and processes them.
@@ -63,14 +42,16 @@ class WorkerCtrl:
                 msg = Message.model_validate_json(msg_bytes)
                 msg = msg.root  # This is the actual message inside the wrapper.
                 logging.debug("Rx %s->ctrl: %r", str(tag), msg)  # All messages from a worker have an ap_address
+                address = msg.address
+                node = nms.get_node(address)
             except Exception as e:
                 logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
                 continue
             match msg.msg_type:
                 case MessageTypes.HUB_CONNECT_IND:
-                    self.handle_hub_connect_ind(msg)
+                    node.on_connect_ind(msg)
                 case MessageTypes.AP_REGISTER_IND:
-                    self.handle_ap_register_ind(msg)
+                    node.on_register(msg)
                 case _:
                     logging.warning(f"Unknown event type: {msg.msg_type}")
 

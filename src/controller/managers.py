@@ -163,20 +163,21 @@ class APManager(ControllerNode):
         return self.get_child_or_404(index)
 
 
+class HubState(StrEnum):
+    """
+    Enum for Hub registration state.
+    """
+
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+
+
 class HubManager(ControllerNode):
     """
     Manager for Hub nodes.
     """
 
-    class State(StrEnum):
-        """
-        Enum for Hub registration state.
-        """
-
-        UNREGISTERED = auto()
-        REGISTERED = auto()
-
-    state: State = State.UNREGISTERED
+    state: HubState = HubState.UNREGISTERED
     children: dict[int, APManager] = Field(default_factory=dict)
 
     _worker: subprocess.Popen | None = PrivateAttr(default=None)
@@ -308,7 +309,7 @@ class NetworkManager(ControllerNode):
     csi: str
     csni: str
     state: NetworkState = NetworkState.UNREGISTERED
-    children: dict[int, "HubManager"] = Field(default_factory=dict)
+    children: dict[int, HubManager] = Field(default_factory=dict)
 
     async def add_hub(self, req: HubCreateRequest, index: int = -1) -> int:
         """
@@ -335,6 +336,8 @@ class NetworkManager(ControllerNode):
             except httpx.HTTPError as e:
                 del self.children[index]
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+
+        hub_mgr.state = NetworkState.REGISTERED
         for _ in range(req.num_aps):
             ap_req = APCreateRequest(
                 num_rts=req.num_rts_per_ap,

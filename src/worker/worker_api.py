@@ -6,9 +6,13 @@ Pydantic v2 models with a union type and a discriminator (msg_type) to enable ro
 deserialization of heterogeneous message types.
 
 The key feature is the Message class, which uses the 'msg_type' field as a discriminator to automatically decode
-incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APRegistered).
+incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APRegisterInd).
 """
+#######################################################################################################################
+# Imports
+#######################################################################################################################
 
+import logging
 from enum import StrEnum
 from typing import Literal
 
@@ -16,14 +20,38 @@ from pydantic import BaseModel, PrivateAttr, RootModel, model_validator
 
 from src.config import settings
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+
+logger = logging.getLogger(__name__)
+
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class MessageTypes(StrEnum):
+    """
+    Enum for message types used as discriminators in AP worker API messages.
+    """
+
     HUB_CONNECT_IND = "hub_connect_ind"
     AP_REGISTER_REQ = "ap_register_req"
     AP_REGISTER_IND = "ap_register_ind"
 
 
 class Address(BaseModel):
+    """
+    Address model representing the hierarchical address of a node.
+
+    Attributes:
+        net (int | None): Network index in nms.
+        hub (int | None): Hub index in nms
+        ap (int | None): AP index in nms.
+        rt (int | None): RT index nms.
+    """
+
     net: int | None = None
     hub: int | None = None
     ap: int | None = None
@@ -33,6 +61,14 @@ class Address(BaseModel):
 
     @model_validator(mode="after")
     def check_hierarchy(self):
+        """
+        Validates the address hierarchy and sets the tag.
+
+        Raises:
+            ValueError: If the address hierarchy is invalid.
+        Returns:
+            Address: The validated Address instance.
+        """
         if self.rt is not None and self.ap is None:
             raise ValueError("If 'rt' is set, 'ap' must also be set.")
         if self.ap is not None and self.hub is None:
@@ -45,11 +81,16 @@ class Address(BaseModel):
         self._tag += f"H{self.hub:02x}" if self.hub is not None else ""
         self._tag += f"A{self.ap:02x}" if self.ap is not None else ""
         self._tag += f"R{self.rt:02x}" if self.rt is not None else ""
-
         return self
 
     @property
     def tag(self) -> str:
+        """
+        Returns the string tag representation of the address.
+
+        Returns:
+            str: The tag string.
+        """
         return self._tag
 
 
@@ -69,8 +110,8 @@ class HubConnectInd(BaseMessageBody):
     Message indicating a hub has connected.
 
     Attributes:
-        msg_type (Literal['ap_connect_ind']): Discriminator for this message type.
-        address (HubAddress): The address of the AP that connected.
+        msg_type (Literal['hub_connect_ind']): Discriminator for this message type.
+        address (Address): The address of the hub that connected.
     """
 
     msg_type: Literal[MessageTypes.HUB_CONNECT_IND] = MessageTypes.HUB_CONNECT_IND
@@ -82,6 +123,8 @@ class APRegisterReq(BaseMessageBody):
 
     Attributes:
         msg_type (Literal['ap_register_req']): Discriminator for this message type.
+        hub_auid (str): AUID of the hub to register with.
+        num_rts (int): Number of RTs to register (default from settings).
     """
 
     msg_type: Literal[MessageTypes.AP_REGISTER_REQ] = MessageTypes.AP_REGISTER_REQ
@@ -95,7 +138,6 @@ class APRegisterInd(BaseMessageBody):
 
     Attributes:
         msg_type (Literal['ap_register_ind']): Discriminator for this message type.
-        ap_address (Address): The address of the registered AP.
         registered_at (str): ISO8601 timestamp of registration.
     """
 
@@ -111,16 +153,21 @@ class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterInd]):
     the correct model based on the 'msg_type' field.
 
     Example:
-        >>> from src.worker.api import Message
-        >>> msg_json = '{"msg_type": "ap_connect_ind", "ap_address": {"net": 1, "hub": 2, "ap": 3}}'
+        >>> from src.worker.worker_api import Message
+        >>> msg_json = '{"msg_type": "hub_connect_ind", "address": {"net": 1, "hub": 2, "ap": 3}}'
         >>> msg = Message.model_validate_json(msg_json)
         >>> type(msg.root)
-        <class 'src.worker_api.APConnectInd'>
+        <class 'src.worker.worker_api.HubConnectInd'>
         >>> msg.root.address.net
         1
-        >>> msg2 = Message(APRegisterReq(msg_type="ap_register_req"))
+        >>> msg2 = Message(APRegisterReq(msg_type="ap_register_req", hub_auid="hub1"))
         >>> msg2.model_dump_json()
-        '{"msg_type":"ap_register_req"}'
+        '{"msg_type":"ap_register_req","address":...,"hub_auid":"hub1","num_rts":...}'
     """
 
     model_config = {"discriminator": "msg_type"}
+
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################

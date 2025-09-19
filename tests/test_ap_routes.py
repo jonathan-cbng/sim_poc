@@ -2,7 +2,7 @@ import time
 
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.controller.managers import NodeState
+from src.controller.managers import APState
 
 
 # Helper to create a network and return its index
@@ -49,7 +49,7 @@ def test_create_ap(test_client):
         status_resp = test_client.get(f"/network/{network_idx}/hub/{hub_idx}/ap/{ap_id}")
         assert status_resp.status_code == HTTP_200_OK
         ap = status_resp.json()
-        if ap.get("state") == NodeState.REGISTERED:
+        if ap.get("state") == APState.REGISTERED:
             break
         if time.time() - start > timeout:
             raise AssertionError(f"AP did not reach REGISTERED state. last state: {ap.get('state')}")

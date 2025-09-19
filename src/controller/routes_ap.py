@@ -13,6 +13,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from src.controller.api import APCreateRequest, Result
 from src.controller.managers import APManager, nms
+from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals
@@ -41,8 +42,8 @@ async def create_ap(
     Returns:
         int: The ID of the newly created AP.
     """
-    network = nms.get_network(network_idx)
-    hub = network.get_hub(hub_idx)
+    address = Address(net=network_idx, hub=hub_idx)
+    hub = nms.get_node(address)
     ap_obj = await hub.add_ap(req)
     logging.info(f"Created AP {ap_obj.index} in hub {hub_idx} (network {network_idx})")
     return ap_obj.index
@@ -63,8 +64,8 @@ async def list_aps(
     Returns:
         dict[int, APManager]: Dictionary of APManagers keyed by AP ID.
     """
-    network = nms.get_network(network_idx)
-    hub = network.get_hub(hub_idx)
+    address = Address(net=network_idx, hub=hub_idx)
+    hub = nms.get_node(address)
     logging.info(f"Listing all {len(hub.children)} APs for hub {hub_idx} (network {network_idx})")
     return hub.children
 
@@ -86,9 +87,8 @@ async def get_ap(
     Returns:
         APManager: The APManager instance.
     """
-    network = nms.get_network(network_idx)
-    hub = network.get_hub(hub_idx)
-    ap = hub.children.get(idx)
+    address = Address(net=network_idx, hub=hub_idx, ap=idx)
+    ap = nms.get_node(address)
     if not ap:
         logging.warning(f"AP {idx} not found in hub {hub_idx} (network {network_idx})")
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="AP not found")
@@ -112,8 +112,8 @@ async def delete_ap(
     Returns:
         Result: Result message.
     """
-    network = nms.get_network(network_idx)
-    hub = network.get_hub(hub_idx)
+    address = Address(net=network_idx, hub=hub_idx)
+    hub = nms.get_node(address)
     await hub.remove_ap(idx)
     logging.info(f"Deleted AP {idx} from hub {hub_idx} (network {network_idx})")
     return Result(message=f"AP {idx} deleted")

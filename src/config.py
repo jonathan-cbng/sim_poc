@@ -1,44 +1,66 @@
+"""
+Configuration settings for the NMS network simulator and API services.
+"""
+
+#######################################################################################################################
+# Imports
+#######################################################################################################################
+from pydantic import Field
 from pydantic_core import Url
 from pydantic_settings import BaseSettings
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+
 
 class Settings(BaseSettings):
-    APP_PORT: int = 12500
-    APP_HOST: str = "0.0.0.0"
-    APP_NAME: str = "AP-RT Management API"
-    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    """
+    Application and API configuration settings.
+    """
 
-    NMS_URL: Url = "http://localhost"
-    NBAPI_PORT: int = 5080
-    SBAPI_PORT: int = 6080
+    APP_PORT: int = Field(12500, description="Port for the API server")
+    APP_HOST: str = Field("0.0.0.0", description="Host for the API server")
 
-    NBAPI_URL: str = f"{NMS_URL}:{NBAPI_PORT}"
-    SBAPI_URL: str = f"{NMS_URL}:{SBAPI_PORT}"
+    LOG_LEVEL: str = Field("INFO", description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
-    SSL_CERT: str | None = None
+    NMS_URL: Url = Field("http://localhost", description="Base URL for the NMS")
+    NBAPI_PORT: int = Field(5080, description="Northbound API port")
+    SBAPI_PORT: int = Field(6080, description="Southbound API port")
 
-    DEFAULT_HEARTBEAT_SECONDS: int = 30
-    DEFAULT_HUBS_PER_NETWORK: int = 2
-    DEFAULT_APS_PER_HUB: int = 10
-    DEFAULT_RTS_PER_AP: int = 64
+    NBAPI_URL: str = Field(default_factory=lambda: "http://localhost:5080", description="Full Northbound API URL")
+    SBAPI_URL: str = Field(default_factory=lambda: "http://localhost:6080", description="Full Southbound API URL")
 
-    PUB_PORT: int = 12501  # Port for publishing commands to AP simulators
-    PULL_PORT: int = 12502  # Port for receiving messages from AP simulators
+    SSL_CERT: str | None = Field(None, description="Path to SSL certificate, if any")
 
-    SECRET_KEY: str = "Hello"
-    ALGORITHM: str = "HS256"
+    DEFAULT_HEARTBEAT_SECONDS: int = Field(30, description="Default heartbeat interval")
 
-    TOKEN_EXPIRY_SECONDS: int = 3600 * 24  # 1 day
+    # 75 hubs would give 75*32*64 = 153600 RTs, which is the maximum expected network size
+    DEFAULT_HUBS_PER_NETWORK: int = Field(1, description="Default number of hubs per network")
+    DEFAULT_APS_PER_HUB: int = Field(32, description="Default number of APs per hub")
+    DEFAULT_RTS_PER_AP: int = Field(64, description="Default number of RTs per AP")
 
-    MAX_DIFF_DEG: float = 0.4  # Maximum degree difference for randomizing lat/lon
+    PUB_PORT: int = Field(12501, description="Port for publishing commands to AP simulators")
+    PULL_PORT: int = Field(12502, description="Port for receiving messages from AP simulators")
 
-    CSI: str = "CBNG001"
-    EMAIL_DOMAIN: str = "cbng.co.uk"
+    SECRET_KEY: str = Field("Hello", description="Secret key for authentication")
+    ALGORITHM: str = Field("HS256", description="Algorithm for token encoding")
 
-    INSTALLER_KEY: str = "test-installer-key"
-    VERIFY_SSL_CERT: bool = False
+    TOKEN_EXPIRY_SECONDS: int = Field(3600 * 24, description="Token expiry in seconds (1 day)")
 
-    HTTPX_TIMEOUT: int = 10  # seconds
+    MAX_DIFF_DEG: float = Field(0.4, description="Maximum degree difference for randomizing lat/lon")
+
+    CSI: str = Field("CBNG001", description="Default customer ID")
+    EMAIL_DOMAIN: str = Field("cbng.co.uk", description="Default email domain")
+
+    INSTALLER_KEY: str = Field("test-installer-key", description="Installer key for authentication")
+    VERIFY_SSL_CERT: bool = Field(False, description="Whether to verify SSL certificates")
+
+    HTTPX_TIMEOUT: int = Field(10, description="Timeout for HTTPX requests in seconds")
 
 
-settings = Settings()
+settings = Settings()  # Load settings from environment variables or .env file if present'
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################
