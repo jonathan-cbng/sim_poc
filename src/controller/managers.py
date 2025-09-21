@@ -18,9 +18,9 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, Field, PrivateAttr
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
-from src.api_nms import NmsAuthInfo, NmsHubCreateRequest, NmsNetworkCreateRequest
+from src.api_nms import NmsAuthInfo, NmsHubCreateRequest
 from src.config import settings
-from src.controller.api import APCreateRequest, HubCreateRequest, NetworkCreateRequest
+from src.controller.api import APCreateRequest, HubCreateRequest
 from src.worker.worker_api import Address, HubConnectInd
 
 #######################################################################################################################
@@ -28,23 +28,13 @@ from src.worker.worker_api import Address, HubConnectInd
 #######################################################################################################################
 
 
-class ControllerNode(BaseModel):
+class ParentNodeMixin:
     """
-    Base class for controller nodes in the NMS network simulator.
-
-    Args:
-        index (int): Node index.
-        parent_index (int | None): Parent node index.
-        children (dict[int, Any]): Child nodes.
-        address (Address): Fully qualified address of the node.
-        auid (str): Unique node identifier.
+    Mixin class for parent nodes that manage child nodes.
     """
 
     index: int
-    parent_index: int | None = None
-    children: dict[int, Any] = Field(default_factory=dict)
-    address: Address = Field(description="The address of this node - sort of a fully qualified name")
-    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
+    children: dict[int, Any]
 
     def get_index(self, requested: int = -1) -> int:
         """
@@ -105,6 +95,22 @@ class ControllerNode(BaseModel):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
 
 
+class ManagerNode(BaseModel):
+    """
+    Base class for manager nodes in the NMS network simulator.
+
+    Args:
+        index (int): Node index.
+        children (dict[int, Any]): Child nodes.
+        address (Address): Fully qualified address of the node.
+        auid (str): Unique node identifier.
+    """
+
+    index: int
+    address: Address = Field(description="The address of this node - sort of a fully qualified name")
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
+
+
 class RTState(StrEnum):
     """
     Enum for RT registration state.
@@ -114,7 +120,7 @@ class RTState(StrEnum):
     REGISTERED = auto()
 
 
-class RTManager(ControllerNode):
+class RTManager(ManagerNode):
     """
     Manager for RT nodes.
 
@@ -136,7 +142,7 @@ class APState(StrEnum):
     REGISTERED = auto()
 
 
-class APManager(ControllerNode):
+class APManager(ParentNodeMixin, ManagerNode):
     """
     Manager for AP nodes.
 
@@ -146,6 +152,7 @@ class APManager(ControllerNode):
         hub_auid (str): AUID of parent Hub.
     """
 
+    children: dict[int, RTManager] = Field(default_factory=dict)
     state: APState = APState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
     hub_auid: str
@@ -172,7 +179,7 @@ class HubState(StrEnum):
     REGISTERED = auto()
 
 
-class HubManager(ControllerNode):
+class HubManager(ParentNodeMixin, ManagerNode):
     """
     Manager for Hub nodes.
     """
@@ -201,7 +208,6 @@ class HubManager(ControllerNode):
         ap_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx)
         new_ap = APManager(
             index=ap_idx,
-            parent_index=self.index,
             address=ap_address,
             heartbeat_seconds=req.heartbeat_seconds,
             hub_auid=self.auid,
@@ -210,9 +216,7 @@ class HubManager(ControllerNode):
         rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            rts[i] = RTManager(
-                index=i, parent_index=new_ap.index, address=rt_address, heartbeat_seconds=req.heartbeat_seconds
-            )
+            rts[i] = RTManager(index=i, address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
         new_ap.children = rts
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
         return new_ap
@@ -295,7 +299,7 @@ class NetworkState(StrEnum):
     REGISTERED = auto()
 
 
-class NetworkManager(ControllerNode):
+class NetworkManager(ParentNodeMixin, ManagerNode):
     """
     Manager for Network nodes.
 
@@ -324,7 +328,7 @@ class NetworkManager(ControllerNode):
         """
         index = self.get_index(index)
         hub_address = Address(net=self.address.net, hub=index)
-        hub_mgr = HubManager(index=index, parent_index=self.address.net, address=hub_address)
+        hub_mgr = HubManager(index=index, address=hub_address)
         self.children[index] = hub_mgr
         await hub_mgr.start_worker()
         hub_req = NmsHubCreateRequest(csni=self.csni, auid=hub_mgr.auid)
@@ -379,103 +383,6 @@ class NetworkManager(ControllerNode):
         return self.children
 
 
-class NMSManager(ControllerNode):
-    """
-    Top-level manager for the NMS network simulator.
-    """
-
-    children: dict[int, NetworkManager] = Field(default_factory=dict)
-
-    async def add_network(self, req: NetworkCreateRequest) -> int:
-        """
-        Add a Network to the NMS and register it with the northbound API.
-
-        Args:
-            req (NetworkCreateRequest): Network creation request.
-
-        Returns:
-            int: The index of the created Network.
-        """
-        url = f"{settings.NBAPI_URL}/api/v1/network/csi/{req.csi}"
-        create_req = NmsNetworkCreateRequest(customer_contact_email=f"tester@{req.email_domain}")
-        async with httpx.AsyncClient(headers=NmsAuthInfo().auth_header(), timeout=settings.HTTPX_TIMEOUT) as client:
-            try:
-                resp = await client.post(url, json=create_req.model_dump())
-                resp.raise_for_status()
-            except httpx.HTTPError as e:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"{e.request}: {e.response}") from e
-        result = resp.json()
-        csni = result["csni"]
-        index = self.get_index(-1)
-        address = Address(net=index)
-        net_mgr = NetworkManager(
-            index=index, parent_index=self.index, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED
-        )
-        self.children[index] = net_mgr
-        logging.info(f"Registered network {csni} to customer {req.csi} with northbound API")
-        for _ in range(req.hubs):
-            hub_req = HubCreateRequest(
-                num_aps=req.aps_per_hub,
-                num_rts_per_ap=req.rts_per_ap,
-                heartbeat_seconds=req.ap_heartbeat_seconds,
-            )
-            await net_mgr.add_hub(req=hub_req)
-        return net_mgr.index
-
-    async def remove_network(self, index: int) -> None:
-        """
-        Remove a Network from the NMS.
-
-        Args:
-            index (int): Network index.
-        """
-        logging.info(f"Removing Network {index}")
-        self.remove_child(index)
-
-    def get_network(self, index: int) -> NetworkManager:
-        """
-        Get a NetworkManager by index.
-
-        Args:
-            index (int): Network index.
-
-        Returns:
-            NetworkManager: The NetworkManager instance.
-        """
-        return self.get_child_or_404(index)
-
-    def get_networks(self) -> dict[int, NetworkManager]:
-        """
-        Get all NetworkManagers in the NMS.
-
-        Returns:
-            dict[int, NetworkManager]: Dictionary of NetworkManagers keyed by Network ID.
-        """
-        return self.children
-
-    def get_node(self, address: Address) -> Any:
-        """
-        Resolve this address to the correct manager node in the NMS hierarchy.
-
-        Args:
-            address (Address): The address to resolve.
-
-        Returns:
-            Any: The object at this address.
-        """
-        instance = self.get_network(address.net)
-        if address.hub is not None:
-            instance = instance.get_hub(address.hub)
-            if address.ap is not None:
-                instance = instance.get_ap(address.ap)
-                if address.rt is not None:
-                    instance = instance.get_rt(address.rt)
-        return instance
-
-
-nms = NMSManager(
-    index=0, address=Address()
-)  # Singleton instance of the network manager - this is the top-level data structure
 #######################################################################################################################
 # End of file
 #######################################################################################################################

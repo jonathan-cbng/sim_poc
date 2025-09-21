@@ -23,7 +23,7 @@ from src.config import settings
 from src.controller.routes_ap import ap_router
 from src.controller.routes_hub import hub_router
 from src.controller.routes_network import network_router
-from src.controller.worker_ctrl import worker_ctrl
+from src.controller.worker_ctrl import simulator
 
 #######################################################################################################################
 # Globals
@@ -52,11 +52,11 @@ async def lifespan(app: FastAPI):
     Yields:
         None
     """
-    worker_ctrl.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
-    listener_task = asyncio.create_task(worker_ctrl.listener())
+    simulator.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
+    listener_task = asyncio.create_task(simulator.listener())
     yield
     listener_task.cancel()
-    worker_ctrl.teardown_zmq(app)
+    simulator.teardown_zmq(app)
 
 
 def get_app() -> FastAPI:

@@ -6,12 +6,19 @@ Worker controller for managing communication with worker processes via ZeroMQ.
 # Imports
 #######################################################################################################################
 import logging
+from typing import Any
 
+import httpx
 import zmq
 import zmq.asyncio
+from fastapi import HTTPException
+from starlette import status
 
-from src.controller.managers import APManager, nms
-from src.worker.worker_api import Message, MessageTypes
+from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
+from src.config import settings
+from src.controller.api import HubCreateRequest, NetworkCreateRequest
+from src.controller.managers import NetworkManager, NetworkState, ParentNodeMixin
+from src.worker.worker_api import Address, Message, MessageTypes
 
 #######################################################################################################################
 # Globals
@@ -22,14 +29,105 @@ from src.worker.worker_api import Message, MessageTypes
 #######################################################################################################################
 
 
-class WorkerCtrl:
+class SimulatorManager(ParentNodeMixin):
     """
-    Controller for managing communication with worker processes via ZeroMQ.
+    Top-level manager for the NMS network simulator.
+
+    This class is intended to be a singleton instance that manages all networks. As such it also manages the ZeroMQ
+    context and sockets for communication with worker processes (which are children of HubManager instances).
     """
 
-    zmq_ctx: zmq.asyncio.Context = None
-    zmq_pub: zmq.asyncio.Socket = None
-    zmq_pull: zmq.asyncio.Socket = None
+    def __init__(self):
+        self.children: dict[int, NetworkManager] = {}
+        self.zmq_ctx: zmq.asyncio.Context = None
+        self.zmq_pub: zmq.asyncio.Socket = None
+        self.zmq_pull: zmq.asyncio.Socket = None
+
+    async def add_network(self, req: NetworkCreateRequest) -> int:
+        """
+        Add a Network to the NMS and register it with the northbound API.
+
+        Args:
+            req (NetworkCreateRequest): Network creation request.
+
+        Returns:
+            int: The index of the created Network.
+        """
+        url = f"{settings.NBAPI_URL}/api/v1/network/csi/{req.csi}"
+        create_req = NmsNetworkCreateRequest(customer_contact_email=f"tester@{req.email_domain}")
+        async with httpx.AsyncClient(headers=NmsAuthInfo().auth_header(), timeout=settings.HTTPX_TIMEOUT) as client:
+            try:
+                resp = await client.post(url, json=create_req.model_dump())
+                resp.raise_for_status()
+            except httpx.HTTPError as e:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"{e.request}: {e.response}") from e
+        result = resp.json()
+        csni = result["csni"]
+        index = self.get_index(-1)
+        address = Address(net=index)
+        net_mgr = NetworkManager(
+            index=index, parent_index=-1, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED
+        )
+        self.children[index] = net_mgr
+        logging.info(f"Registered network {csni} to customer {req.csi} with northbound API")
+        for _ in range(req.hubs):
+            hub_req = HubCreateRequest(
+                num_aps=req.aps_per_hub,
+                num_rts_per_ap=req.rts_per_ap,
+                heartbeat_seconds=req.ap_heartbeat_seconds,
+            )
+            await net_mgr.add_hub(req=hub_req)
+        return net_mgr.index
+
+    async def remove_network(self, index: int) -> None:
+        """
+        Remove a Network from the NMS.
+
+        Args:
+            index (int): Network index.
+        """
+        logging.info(f"Removing Network {index}")
+        self.remove_child(index)
+
+    def get_network(self, index: int) -> NetworkManager:
+        """
+        Get a NetworkManager by index.
+
+        Args:
+            index (int): Network index.
+
+        Returns:
+            NetworkManager: The NetworkManager instance.
+        """
+        return self.get_child_or_404(index)
+
+    def get_networks(self) -> dict[int, NetworkManager]:
+        """
+        Get all NetworkManagers in the NMS.
+
+        Returns:
+            dict[int, NetworkManager]: Dictionary of NetworkManagers keyed by Network ID.
+        """
+        return self.children
+
+    def get_node(self, address: Address) -> Any:
+        """
+        Resolve this address to the correct manager node in the NMS hierarchy.
+
+        Args:
+            address (Address): The address to resolve.
+
+        Returns:
+            Any: The object at this address.
+        """
+        instance = self.get_network(address.net)
+        if address.hub is not None:
+            instance = instance.get_hub(address.hub)
+            if address.ap is not None:
+                instance = instance.get_ap(address.ap)
+                if address.rt is not None:
+                    instance = instance.get_rt(address.rt)
+        return instance
 
     async def listener(self) -> None:
         """
@@ -43,7 +141,7 @@ class WorkerCtrl:
                 msg = msg.root  # This is the actual message inside the wrapper.
                 logging.debug("Rx %s->ctrl: %r", str(tag), msg)  # All messages from a worker have an ap_address
                 address = msg.address
-                node = nms.get_node(address)
+                node = self.get_node(address)
             except Exception as e:
                 logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
                 continue
@@ -55,17 +153,18 @@ class WorkerCtrl:
                 case _:
                     logging.warning(f"Unknown event type: {msg.msg_type}")
 
-    def send_to_ap(self, ap: APManager, msg) -> None:
+    def send(self, msg) -> None:
         """
         Send a message to an AP via the PUB socket.
 
         Args:
-            ap (APManager): The AP manager instance.
-            msg: The message to send.
+            msg: The message to send - this could be a Message, or one of the message subtypes.
         """
-        logging.debug("Tx ctrl->%s: %r", ap._tag, msg)
         msg = msg if isinstance(msg, Message) else Message(msg)
-        pub_message = f"{ap._tag} {msg.model_dump_json()}"
+        tag = msg.root.address.tag
+        logging.debug("Tx ctrl->%s: %r", tag, msg)
+
+        pub_message = f"{tag} {msg.model_dump_json()}"
         self.zmq_pub.send_string(pub_message)
 
     def setup_zmq(self, app, pub_port: int, pull_port: int) -> None:
@@ -104,7 +203,8 @@ class WorkerCtrl:
         app.state.zmq_pull = None
 
 
-worker_ctrl = WorkerCtrl()
+simulator = SimulatorManager()  # Singleton instance of the simulator manager - this is the top-level data structure
+
 #######################################################################################################################
 # End of file
 #######################################################################################################################

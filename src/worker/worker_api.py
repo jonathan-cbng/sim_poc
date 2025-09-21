@@ -14,7 +14,7 @@ incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APR
 
 import logging
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, PrivateAttr, RootModel, model_validator
 
@@ -58,6 +58,9 @@ class Address(BaseModel):
     rt: int | None = None
 
     _tag: str = PrivateAttr()
+    _hash: int = PrivateAttr()
+
+    model_config = {"frozen": True}
 
     @model_validator(mode="after")
     def check_hierarchy(self):
@@ -76,11 +79,13 @@ class Address(BaseModel):
         if self.hub is not None and self.net is None:
             raise ValueError("If 'hub' is set, 'net' must also be set.")
         # Set _tag after validation
-        self._tag = ""
-        self._tag += f"N{self.net:02x}" if self.net is not None else ""
-        self._tag += f"H{self.hub:02x}" if self.hub is not None else ""
-        self._tag += f"A{self.ap:02x}" if self.ap is not None else ""
-        self._tag += f"R{self.rt:02x}" if self.rt is not None else ""
+        tag = ""
+        tag += f"N{self.net:02x}" if self.net is not None else ""
+        tag += f"H{self.hub:02x}" if self.hub is not None else ""
+        tag += f"A{self.ap:02x}" if self.ap is not None else ""
+        tag += f"R{self.rt:02x}" if self.rt is not None else ""
+        object.__setattr__(self, "_tag", tag)
+        object.__setattr__(self, "_hash", hash(tag))
         return self
 
     @property
@@ -92,6 +97,14 @@ class Address(BaseModel):
             str: The tag string.
         """
         return self._tag
+
+    def __hash__(self) -> int:
+        return self._hash
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Address):
+            return False
+        return self._hash == other._hash
 
 
 class BaseMessageBody(BaseModel):
@@ -132,7 +145,7 @@ class APRegisterReq(BaseMessageBody):
     num_rts: int = settings.DEFAULT_RTS_PER_AP
 
 
-class APRegisterInd(BaseMessageBody):
+class APRegisterRsp(BaseMessageBody):
     """
     Message indicating an AP has been registered.
 
@@ -145,7 +158,7 @@ class APRegisterInd(BaseMessageBody):
     registered_at: str
 
 
-class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterInd]):
+class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp]):
     """
     Union wrapper for AP worker messages, using 'msg_type' as a discriminator.
 

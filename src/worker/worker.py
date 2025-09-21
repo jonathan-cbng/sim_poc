@@ -15,7 +15,7 @@ from src.api_nms import (
     RegisterAPSecretHeaders,
 )
 from src.config import settings
-from src.worker.worker_api import Address, APRegisterInd, APRegisterReq, HubConnectInd, Message, MessageTypes
+from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, Message, MessageTypes
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
@@ -138,7 +138,7 @@ class Worker:
             logging.error(f"Exception during AP registration: {e}")
             return
 
-        response = APRegisterInd(address=self.address, registered_at=datetime.now(UTC).isoformat())
+        response = APRegisterRsp(address=self.address, registered_at=datetime.now(UTC).isoformat())
         await self.send_to_controller(response)
 
     async def execute_command(self, command: Message):

@@ -12,7 +12,8 @@ from fastapi import APIRouter, Body, HTTPException, Path
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from src.controller.api import NetworkCreateRequest, Result
-from src.controller.managers import NetworkManager, nms
+from src.controller.managers import NetworkManager
+from src.controller.worker_ctrl import simulator
 
 #######################################################################################################################
 # Globals
@@ -37,7 +38,7 @@ async def create_network(
     Returns:
         int: The ID of the newly created Network.
     """
-    new_id = await nms.add_network(req)
+    new_id = await simulator.add_network(req)
     logging.info(f"Created Network {new_id}")
     return new_id
 
@@ -50,8 +51,8 @@ async def list_networks() -> dict[int, NetworkManager]:
     Returns:
         dict[int, NetworkManager]: Dictionary of NetworkManagers keyed by Network ID.
     """
-    logging.info(f"Listing all {len(nms.children)} Networks")
-    return nms.children
+    logging.info(f"Listing all {len(simulator.children)} Networks")
+    return simulator.children
 
 
 @network_router.get("/{idx}")
@@ -65,7 +66,7 @@ async def get_network(idx: Annotated[int, Path(description="Network index")]) ->
     Returns:
         NetworkManager: The NetworkManager instance.
     """
-    network = nms.get_network(idx)
+    network = simulator.get_network(idx)
     if not network:
         logging.warning(f"Network {idx} not found")
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Network not found")
@@ -83,7 +84,7 @@ async def delete_network(idx: Annotated[int, Path(description="Network index")])
     Returns:
         Result: Result message.
     """
-    await nms.remove_network(idx)
+    await simulator.remove_network(idx)
     logging.info(f"Deleted Network {idx}")
     return Result(message=f"Network {idx} deleted")
 

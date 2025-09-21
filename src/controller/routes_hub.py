@@ -12,7 +12,8 @@ from fastapi import APIRouter, Body, HTTPException, Path
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from src.controller.api import HubCreateRequest, Result
-from src.controller.managers import HubManager, nms
+from src.controller.managers import HubManager
+from src.controller.worker_ctrl import simulator
 
 #######################################################################################################################
 # Globals
@@ -39,7 +40,7 @@ async def create_hub(
     Returns:
         int: The ID of the newly created Hub.
     """
-    network = nms.get_network(network_idx)
+    network = simulator.get_network(network_idx)
     new_id = await network.add_hub(req)
     logging.info(f"Created Hub {new_id} in network {network_idx}")
     return new_id
@@ -58,7 +59,7 @@ async def list_hubs(
     Returns:
         dict[int, HubManager]: Dictionary of HubManagers keyed by Hub ID.
     """
-    network = nms.get_network(network_idx)
+    network = simulator.get_network(network_idx)
     logging.info(f"Listing all {len(network.children)} Hubs for network {network_idx}")
     return network.get_hubs()
 
@@ -78,7 +79,7 @@ async def get_hub(
     Returns:
         HubManager: The HubManager instance.
     """
-    network = nms.get_network(network_idx)
+    network = simulator.get_network(network_idx)
     hub = network.get_hub(idx)
     if not hub:
         logging.warning(f"Hub {idx} not found in network {network_idx}")
@@ -101,7 +102,7 @@ async def delete_hub(
     Returns:
         Result: Result message.
     """
-    network = nms.get_network(network_idx)
+    network = simulator.get_network(network_idx)
     await network.remove_hub(idx)
     logging.info(f"Deleted Hub {idx} from network {network_idx}")
     return Result(message=f"Hub {idx} deleted")

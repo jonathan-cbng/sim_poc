@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from src.config import settings
 from src.controller.app import get_app
-from src.controller.managers import nms
+from src.controller.worker_ctrl import simulator
 
 
 @pytest.fixture(scope="session")
@@ -52,4 +52,4 @@ async def pusher(zmq_ctx):
 
 @pytest.fixture(autouse=True)
 def reset_ctrls():
-    nms.children.clear()
+    simulator.children.clear()
