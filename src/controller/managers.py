@@ -21,7 +21,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from src.api_nms import NmsAuthInfo, NmsHubCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest
-from src.worker.worker_api import Address, HubConnectInd
+from src.worker.worker_api import Address, APRegisterReq, HubConnectInd, worker_ctrl
 
 #######################################################################################################################
 # Body
@@ -213,6 +213,15 @@ class HubManager(ParentNodeMixin, ManagerNode):
             hub_auid=self.auid,
         )
         self.children[ap_idx] = new_ap
+        ap_req = APRegisterReq(
+            address=ap_address,
+            heartbeat_seconds=req.rt_heartbeat_seconds,
+            hub_auid=self.auid,
+            azimuth_deg=req.azimuth_deg,
+            auid=new_ap.auid,
+        )
+        worker_ctrl.send(ap_req)
+
         rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
@@ -342,11 +351,12 @@ class NetworkManager(ParentNodeMixin, ManagerNode):
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
         hub_mgr.state = NetworkState.REGISTERED
-        for _ in range(req.num_aps):
+        for i in range(req.num_aps):
             ap_req = APCreateRequest(
                 num_rts=req.num_rts_per_ap,
                 heartbeat_seconds=req.heartbeat_seconds,
                 rt_heartbeat_seconds=req.rt_heartbeat_seconds,
+                azimuth_deg=round(i * (360.0 / req.num_aps)),
             )
             await hub_mgr.add_ap(ap_req)
         return index

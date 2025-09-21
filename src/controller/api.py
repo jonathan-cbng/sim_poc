@@ -44,6 +44,7 @@ class APCreateRequest(BaseModel):
     rt_heartbeat_seconds: int = Field(
         settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds for child RTs"
     )
+    azimuth_deg: int = Field(..., description="Azimuth in degrees to set on the AP", ge=0, le=360)
 
 
 class HubCreateRequest(BaseModel):

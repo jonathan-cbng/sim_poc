@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     SBAPI_PORT: int = Field(6080, description="Southbound API port")
 
     NBAPI_URL: str = Field(default_factory=lambda: "http://localhost:5080", description="Full Northbound API URL")
-    SBAPI_URL: str = Field(default_factory=lambda: "http://localhost:6080", description="Full Southbound API URL")
+    SBAPI_URL: str = Field(default_factory=lambda: "https://localhost:6080", description="Full Southbound API URL")
 
     SSL_CERT: str | None = Field(None, description="Path to SSL certificate, if any")
 
@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     CSI: str = Field("CBNG001", description="Default customer ID")
     EMAIL_DOMAIN: str = Field("cbng.co.uk", description="Default email domain")
 
+    AP_SECRET: str = Field("ap-secret", description="Default AP secret for registration")
     INSTALLER_KEY: str = Field("test-installer-key", description="Installer key for authentication")
     VERIFY_SSL_CERT: bool = Field(False, description="Whether to verify SSL certificates")
 

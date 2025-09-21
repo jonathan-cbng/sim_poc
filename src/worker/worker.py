@@ -10,6 +10,7 @@ import zmq.asyncio
 
 from src.api_nms import (
     NmsAPCreateRequest,
+    NmsAuthInfo,
     RegisterAPCandidateHeaders,
     RegisterAPCandidateRequest,
     RegisterAPSecretHeaders,
@@ -85,7 +86,7 @@ class Worker:
         # AP_SECRET = settings.AP_SECRET
 
         parent_auid = command.hub_auid
-        ap_auid = self.address.tag
+        ap_auid = self.auid
         temp_auid = f"T-{ap_auid}"
         # Compose AP creation payload using Pydantic model
         ap_payload = NmsAPCreateRequest(
@@ -93,44 +94,41 @@ class Worker:
             id=f"ID_{ap_auid}",
             name=f"NAME_{ap_auid}",
             parent_auid=parent_auid,
-            azimuth_deg=round(self.address.ap * (360 / command.num_rts)),
+            azimuth_deg=command.azimuth_deg,
         )
 
         try:
-            async with httpx.AsyncClient(timeout=settings.HTTPX_TIMEOUT) as client:
+            async with httpx.AsyncClient(
+                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+            ) as client:
                 # Step 1: Create AP in NBAPI
-                nbapi_url = f"{settings.NBAPI_URL}/api/v1/node/ap/T-{ap_auid}"
-                async with client.post(
-                    nbapi_url,
+                res = await client.post(
+                    f"{settings.NBAPI_URL}/api/v1/node/ap/{temp_auid}",
                     json=ap_payload.model_dump(),
-                    headers={"Authorization": settings.NBAPI_AUTH},
-                    verify=settings.VERIFY_SSL_CERT,
-                ) as res:
-                    res.raise_for_status("AP creation failed")
+                    headers=NmsAuthInfo().auth_header(),
+                )
+                res.raise_for_status()
 
                 # Step 2: Register AP secret in SBAPI using Pydantic headers
-                sbapi_secret_url = f"{settings.SBAPI_URL}/ap/register_secret"
                 secret_headers = RegisterAPSecretHeaders(gnodebid=ap_auid, secret=settings.AP_SECRET)
-                async with client.post(
-                    sbapi_secret_url, json={}, headers=secret_headers.model_dump(), verify=settings.VERIFY_SSL_CERT
-                ) as res:
-                    res.raise_for_status("AP secret registration failed")
+                res = await client.post(
+                    f"{settings.SBAPI_URL}/ap/register_secret/", json={}, headers=secret_headers.model_dump()
+                )
+                res.raise_for_status()
 
                 # Step 3: Register AP as candidate in SBAPI using Pydantic models
-                sbapi_candidate_url = f"{settings.SBAPI_URL}/ap/register_candidate"
                 candidate_payload = RegisterAPCandidateRequest(
                     csi=settings.CSI,
                     installer_key=settings.INSTALLER_KEY,
-                    chosen_auid=f"T-{ap_auid}",
+                    chosen_auid=temp_auid,
                 )
                 candidate_headers = RegisterAPCandidateHeaders(gnodebid=ap_auid, secret=settings.AP_SECRET)
-                async with client.post(
-                    sbapi_candidate_url,
+                res = await client.post(
+                    f"{settings.SBAPI_URL}/ap/register_candidate",
                     json=candidate_payload.model_dump(),
                     headers=candidate_headers.model_dump(),
-                    verify=settings.VERIFY_SSL_CERT,
-                ) as res:
-                    res.raise_for_status("AP candidate registration failed")
+                )
+                res.raise_for_status()
 
                 # Registration successful
                 logging.info("%s: AP registration successful (AUID: %s)", self.address.tag, ap_auid)
