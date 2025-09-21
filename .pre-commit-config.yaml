@@ -16,9 +16,9 @@ repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.12.5
   hooks:
+  - id: ruff-format
   - id: ruff-check
     args: [--fix, --unsafe-fixes]
-  - id: ruff-format
 - repo: https://github.com/hukkin/mdformat
   rev: 0.7.22  # Use the ref you want to point at
   hooks:
