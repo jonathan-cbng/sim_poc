@@ -106,14 +106,13 @@ class NmsNetworkCreateRequest(BaseModel):
     sw_version_auto_update: str | None = Field(default="")
 
 
-class NmsHubCreateRequest(BaseModel):
-    csni: str
-    auid: str = Field(default_factory=shortuuid.uuid)
+class NmsCommonCreateRequest(BaseModel):
     id: str | None = None
+    auid: str = Field(default_factory=shortuuid.uuid)
     name: str | None = None
-    address: str = "None"
     lat_deg: float = Field(default_factory=lambda: 51.5072 + random() * settings.MAX_DIFF_DEG)
     lon_deg: float = Field(default_factory=lambda: 0.1276 + random() * settings.MAX_DIFF_DEG)
+    address: str = "None"
     node_status: str = Field(default="Planned")
     notes: str = Field(default="No notes")
 
@@ -122,6 +121,13 @@ class NmsHubCreateRequest(BaseModel):
         self.id = self.id or f"ID_{self.auid}"
         self.name = self.name or f"NAME_{self.auid}"
         return self
+
+
+class NmsHubCreateRequest(NmsCommonCreateRequest):
+    csni: str
+    address: str = "None"
+    lat_deg: float = Field(default_factory=lambda: 51.5072 + random() * settings.MAX_DIFF_DEG)
+    lon_deg: float = Field(default_factory=lambda: 0.1276 + random() * settings.MAX_DIFF_DEG)
 
 
 class NmsAPConfiguration(BaseModel):
@@ -146,20 +152,15 @@ class NmsAPConfiguration(BaseModel):
     frequency_band_ghz: int = 39
 
 
-class NmsAPCreateRequest(BaseModel):
-    auid: str = Field(default_factory=shortuuid.uuid)
+class NmsAPCreateRequest(NmsCommonCreateRequest):
     allocated_auid: str = "No"
-    id: str
-    name: str
     parent_auid: str
-    node_status: str = "Planned"
     node_priority: str = "Bronze"
     ap_system_transmitter_enabled: bool = False
     azimuth_deg: int = 0
     elevation_deg: int = 90
     height_mast_m: int = 20
     height_asl_m: int = 21
-    notes: str = "NONE"
     configuration: NmsAPConfiguration = NmsAPConfiguration()
 
 
@@ -177,3 +178,11 @@ class RegisterAPCandidateRequest(BaseModel):
 class RegisterAPCandidateHeaders(BaseModel):
     gnodebid: str
     secret: str
+
+
+class NmsRTCreateRequest(NmsCommonCreateRequest):
+    parent_auid: str
+    node_priority: str = "Bronze"
+    height_mast_m: int = 20
+    height_asl_m: int = 21
+    network_details: dict = Field(default_factory=dict)
