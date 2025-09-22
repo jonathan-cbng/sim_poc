@@ -17,7 +17,6 @@ Usage:
 #######################################################################################################################
 
 import logging
-from datetime import UTC, datetime
 
 import httpx
 import shortuuid
@@ -25,9 +24,9 @@ import shortuuid
 from src.api_nms import (
     NmsAPCreateRequest,
     NmsAuthInfo,
-    RegisterAPCandidateHeaders,
-    RegisterAPCandidateRequest,
-    RegisterAPSecretHeaders,
+    NmsRegisterAPCandidateHeaders,
+    NmsRegisterAPCandidateRequest,
+    NmsRegisterAPSecretHeaders,
 )
 from src.config import settings
 from src.worker.api_types import APRegisterReq, APRegisterRsp
@@ -69,7 +68,7 @@ class AP(Node):
         self.azimuth_deg = None
         self.ap_secret = None
 
-    async def process_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
+    async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
         Handle an AP registration request.
 
@@ -96,20 +95,20 @@ class AP(Node):
         self.ap_secret = shortuuid.uuid()
 
         temp_auid = f"T-{self.auid}"
-        # Compose AP creation payload using Pydantic model
-        ap_payload = NmsAPCreateRequest(
-            auid=temp_auid,
-            id=f"ID_{self.auid}",
-            name=f"NAME_{self.auid}",
-            parent_auid=self.parent_auid,
-            azimuth_deg=self.azimuth_deg,
-        )
-
         try:
             async with httpx.AsyncClient(
                 timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
             ) as client:
                 # Step 1: Create AP in NBAPI
+                # Compose AP creation payload using Pydantic model
+                ap_payload = NmsAPCreateRequest(
+                    auid=temp_auid,
+                    id=f"ID_{self.auid}",
+                    name=f"NAME_{self.auid}",
+                    parent_auid=self.parent_auid,
+                    azimuth_deg=self.azimuth_deg,
+                )
+
                 res = await client.post(
                     f"{settings.NBAPI_URL}/api/v1/node/ap/{temp_auid}",
                     json=ap_payload.model_dump(),
@@ -118,19 +117,19 @@ class AP(Node):
                 res.raise_for_status()
 
                 # Step 2: Register AP secret in SBAPI using Pydantic headers
-                secret_headers = RegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
+                secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
                 res = await client.post(
                     f"{settings.SBAPI_URL}/ap/register_secret/", json={}, headers=secret_headers.model_dump()
                 )
                 res.raise_for_status()
 
                 # Step 3: Register AP as candidate in SBAPI using Pydantic models
-                candidate_payload = RegisterAPCandidateRequest(
+                candidate_payload = NmsRegisterAPCandidateRequest(
                     csi=settings.CSI,
                     installer_key=settings.INSTALLER_KEY,
                     chosen_auid=temp_auid,
                 )
-                candidate_headers = RegisterAPCandidateHeaders(gnodebid=self.auid, secret=self.ap_secret)
+                candidate_headers = NmsRegisterAPCandidateHeaders(gnodebid=self.auid, secret=self.ap_secret)
                 res = await client.post(
                     f"{settings.SBAPI_URL}/ap/register_candidate",
                     json=candidate_payload.model_dump(),
@@ -139,11 +138,10 @@ class AP(Node):
                 res.raise_for_status()
 
                 logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
+                response = APRegisterRsp(success=True, address=self.address)
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
-            return None
-
-        response = APRegisterRsp(address=self.address, registered_at=datetime.now(UTC).isoformat())
+            response = APRegisterRsp(success=False, address=self.address)
 
         # TODO: start heartbeat task here
         return response

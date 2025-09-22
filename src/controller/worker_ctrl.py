@@ -15,8 +15,9 @@ from starlette import status
 from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import HubCreateRequest, NetworkCreateRequest
+from src.controller.comms import ControllerComms
 from src.controller.managers import NetworkManager, NetworkState, ParentNodeMixin
-from src.worker.api_types import Address
+from src.worker.api_types import Address, MessageTypes
 
 #######################################################################################################################
 # Globals
@@ -60,9 +61,7 @@ class SimulatorManager(ParentNodeMixin):
         csni = result["csni"]
         index = self.get_index(-1)
         address = Address(net=index)
-        net_mgr = NetworkManager(
-            index=index, parent_index=-1, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED
-        )
+        net_mgr = NetworkManager(index=index, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED)
         self.children[index] = net_mgr
         logging.info(f"Registered network {csni} to customer {req.csi} with northbound API")
         for _ in range(req.hubs):
@@ -123,6 +122,29 @@ class SimulatorManager(ParentNodeMixin):
                 if address.rt is not None:
                     instance = instance.get_rt(address.rt)
         return instance
+
+    simulator = None
+
+    async def listener(self, worker_ctrl: ControllerComms) -> None:
+        """
+        Listens for incoming messages on the PULL socket and processes them.
+
+        Args:
+            simulator: The SimulatorManager instance to route messages to the correct node.
+        """
+        while True:
+            msg = await worker_ctrl.get_message()
+            if msg is not None:
+                address = msg.address
+                node = self.get_node(address)
+
+                match msg.msg_type:
+                    case MessageTypes.HUB_CONNECT_IND:
+                        node.on_connect_ind(msg)
+                    case MessageTypes.AP_REGISTER_RSP:
+                        node.on_register_rsp(msg)
+                    case _:
+                        logging.warning(f"Unknown event type: {msg.msg_type}")
 
 
 simulator = SimulatorManager()  # Singleton instance of the simulator manager - this is the top-level data structure

@@ -164,25 +164,35 @@ class NmsAPCreateRequest(NmsCommonCreateRequest):
     configuration: NmsAPConfiguration = NmsAPConfiguration()
 
 
-class RegisterAPSecretHeaders(BaseModel):
+class NmsRegisterAPSecretHeaders(BaseModel):
     gnodebid: str
     secret: str
 
 
-class RegisterAPCandidateRequest(BaseModel):
+class NmsRegisterAPCandidateRequest(BaseModel):
     csi: str
     installer_key: str
     chosen_auid: str
 
 
-class RegisterAPCandidateHeaders(BaseModel):
+class NmsRegisterAPCandidateHeaders(BaseModel):
     gnodebid: str
     secret: str
 
 
 class NmsRTCreateRequest(NmsCommonCreateRequest):
     parent_auid: str
-    node_priority: str = "Bronze"
+    node_priority: str = "Gold"
     height_mast_m: int = 20
     height_asl_m: int = 21
-    network_details: dict = Field(default_factory=dict)
+    network_details: dict = Field(default_factory=lambda: {"rt_wwan_1_ipv6_address": None})
+
+
+class NmsRTRegisterParam(BaseModel):
+    name: str
+    type: str
+    value: str
+
+
+class NmsRTRegisterRequest(BaseModel):
+    params: list[NmsRTRegisterParam]

@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         None
     """
     worker_ctrl.setup_zmq(app, settings.PUB_PORT, settings.PULL_PORT)
-    listener_task = asyncio.create_task(worker_ctrl.listener(simulator))
+    listener_task = asyncio.create_task(simulator.listener(worker_ctrl))
     yield
     listener_task.cancel()
     worker_ctrl.teardown_zmq(app)

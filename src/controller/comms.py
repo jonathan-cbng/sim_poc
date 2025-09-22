@@ -20,7 +20,7 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.worker.api_types import Message, MessageTypes
+from src.worker.api_types import Message
 
 #######################################################################################################################
 # Body
@@ -37,34 +37,27 @@ class ControllerComms:
         None
     """
 
-    simulator = None
+    def __init__(self):
+        self.zmq_ctx = zmq.asyncio.Context()
 
-    async def listener(self, simulator) -> None:
+    async def get_message(self) -> Message | None:
         """
-        Listens for incoming messages on the PULL socket and processes them.
+        Receive a message from a worker node via the PULL socket.
 
-        Args:
-            simulator: The SimulatorManager instance to route messages to the correct node.
+        Returns:
+            Message: The received message.
         """
-        while True:
-            msg_bytes = await self.zmq_pull.recv()
-            tag, msg_bytes = msg_bytes.split(b" ", 1)
-            try:
-                msg = Message.model_validate_json(msg_bytes)
-                msg = msg.root  # This is the actual message inside the wrapper.
-                logging.debug("Rx %s->ctrl: %r", str(tag), msg)
-                address = msg.address
-                node = simulator.get_node(address)
-            except Exception as e:
-                logging.warning(f"Received non-JSON message: {msg_bytes!r} ({e})")
-                continue
-            match msg.msg_type:
-                case MessageTypes.HUB_CONNECT_IND:
-                    node.on_connect_ind(msg)
-                case MessageTypes.AP_REGISTER_IND:
-                    node.on_register(msg)
-                case _:
-                    logging.warning(f"Unknown event type: {msg.msg_type}")
+        msg_bytes = await self.zmq_pull.recv()
+        tag, msg_bytes = msg_bytes.split(b" ", 1)
+
+        try:
+            msg = Message.model_validate_json(msg_bytes)
+            msg = msg.root  # This is the actual message inside the wrapper.
+            logging.debug("Rx %s->ctrl: %r", str(tag), msg)
+            return msg
+        except Exception as e:
+            logging.warning(f"Unable to decode message: {msg_bytes!r} ({e})")
+            return None
 
     def send(self, msg) -> None:
         """
@@ -88,7 +81,6 @@ class ControllerComms:
             pub_port (int): Port number for the PUB socket
             pull_port (int): Port number for the PULL socket
         """
-        self.zmq_ctx = zmq.asyncio.Context()
         self.zmq_pub = self.zmq_ctx.socket(zmq.PUB)
         self.zmq_pub.bind(f"tcp://*:{pub_port}")
         self.zmq_pull = self.zmq_ctx.socket(zmq.PULL)
@@ -115,7 +107,7 @@ class ControllerComms:
         app.state.zmq_pull = None
 
 
-worker_ctrl = ControllerComms()  # Singleton instance of the controller comms
+worker_ctrl = ControllerComms()
 
 #######################################################################################################################
 # End of file

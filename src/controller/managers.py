@@ -22,7 +22,7 @@ from src.api_nms import NmsAuthInfo, NmsHubCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest
 from src.controller.comms import worker_ctrl
-from src.worker.api_types import Address, APRegisterReq, HubConnectInd
+from src.worker.api_types import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
 
 #######################################################################################################################
 # Body
@@ -132,6 +132,29 @@ class RTManager(ManagerNode):
 
     state: RTState = RTState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
+    azimuth_deg: int = Field(default=0, ge=0, le=360)
+
+    _registered_event: asyncio.Event = PrivateAttr()
+
+    def model_post_init(self, __context):
+        self._registered_event = asyncio.Event()
+
+    async def register(self):
+        """
+        Wait until the AP is registered or registration failed.
+
+        Returns:
+            asyncio.Event: Event that is set when registration completes.
+        """
+        register_req = RTRegisterReq(
+            address=self.address,
+            heartbeat_seconds=self.heartbeat_seconds,
+            ap_auid=self.auid,
+            auid=self.auid,
+        )
+        worker_ctrl.send(register_req)
+
+        await self._registered_event.wait()
 
 
 class APState(StrEnum):
@@ -141,6 +164,7 @@ class APState(StrEnum):
 
     UNREGISTERED = auto()
     REGISTERED = auto()
+    REGISTRATION_FAILED = auto()
 
 
 class APManager(ParentNodeMixin, ManagerNode):
@@ -158,6 +182,11 @@ class APManager(ParentNodeMixin, ManagerNode):
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
     hub_auid: str
 
+    _registered_event: asyncio.Event = PrivateAttr()
+
+    def model_post_init(self, __context):
+        self._registered_event = asyncio.Event()
+
     def get_rt(self, index: int) -> RTManager:
         """
         Get an RTManager by index.
@@ -169,6 +198,38 @@ class APManager(ParentNodeMixin, ManagerNode):
             RTManager: The RTManager instance.
         """
         return self.get_child_or_404(index)
+
+    def on_register_rsp(self, msg: APRegisterRsp):
+        """
+        Handle APRegisterRsp message from worker.
+
+        Args:
+            msg (APRegisterRsp): The AP registration response message.
+        """
+        self.state = APState.REGISTERED if msg.success else APState.REGISTRATION_FAILED
+        if msg.success:
+            logging.info(f"AP {self.address.tag} registered successfully.")
+        else:
+            logging.error(f"AP {self.address.tag} registration failed.")
+
+        self._registered_event.set()
+
+    async def register(self):
+        """
+        Wait until the AP is registered or registration failed.
+
+        Returns:
+            asyncio.Event: Event that is set when registration completes.
+        """
+        ap_req = APRegisterReq(
+            address=self.address,
+            heartbeat_seconds=self.heartbeat_seconds,
+            hub_auid=self.hub_auid,
+            auid=self.auid,
+        )
+        worker_ctrl.send(ap_req)
+
+        await self._registered_event.wait()
 
 
 class HubState(StrEnum):
@@ -214,19 +275,13 @@ class HubManager(ParentNodeMixin, ManagerNode):
             hub_auid=self.auid,
         )
         self.children[ap_idx] = new_ap
-        ap_req = APRegisterReq(
-            address=ap_address,
-            heartbeat_seconds=req.rt_heartbeat_seconds,
-            hub_auid=self.auid,
-            azimuth_deg=req.azimuth_deg,
-            auid=new_ap.auid,
-        )
-        worker_ctrl.send(ap_req)
+        await new_ap.register()
 
         rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            rts[i] = RTManager(index=i, address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
+            rts[i] = rt = RTManager(index=i, address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
+            await rt.register()
         new_ap.children = rts
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
         return new_ap
@@ -351,7 +406,7 @@ class NetworkManager(ParentNodeMixin, ManagerNode):
                 del self.children[index]
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
-        hub_mgr.state = NetworkState.REGISTERED
+        hub_mgr.state = HubState.REGISTERED
         for i in range(req.num_aps):
             ap_req = APCreateRequest(
                 num_rts=req.num_rts_per_ap,

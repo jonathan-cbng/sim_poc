@@ -28,9 +28,10 @@ import shortuuid
 
 from src.config import settings
 from src.worker.ap import AP
-from src.worker.api_types import Address, APRegisterReq, HubConnectInd, Message, MessageTypes
+from src.worker.api_types import Address, APRegisterReq, HubConnectInd, Message, MessageTypes, RTRegisterReq
 from src.worker.comms import WorkerComms
 from src.worker.node import nodes
+from src.worker.rt import RT
 
 #######################################################################################################################
 # Globals
@@ -68,8 +69,9 @@ class Worker:
         self.auid = str(shortuuid.uuid())
         self.comms = comms
 
-    async def process_register_req(self, command: APRegisterReq) -> Message:
-        """Process an AP register request.
+    async def ap_register_req(self, command: APRegisterReq) -> Message | None:
+        """Process an AP register request. We handle this at the worker level to create
+        the AP object and then delegate to it.
 
         Args:
             command (APRegisterReq): The AP register request message.
@@ -78,7 +80,20 @@ class Worker:
             Message: The response message from the AP.
         """
         ap = AP(command.address, self.comms)
-        return await ap.process_register_req(command)
+        return await ap.register_req(command)
+
+    async def rt_register_req(self, command: RTRegisterReq) -> Message | None:
+        """Process an AP register request. We handle this at the worker level to create
+        the AP object and then delegate to it.
+
+        Args:
+            command (APRegisterReq): The AP register request message.
+
+        Returns:
+            Message: The response message from the AP.
+        """
+        rt = RT(command.address, self.comms)
+        return await rt.register_req(command)
 
     async def execute_command(self, command: Message) -> None:
         """Execute a command received from the controller.
@@ -94,23 +109,36 @@ class Worker:
         result = None
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
-                result = await obj.process_register_req(cmd)
+                result = await obj.ap_register_req(cmd)
+            case MessageTypes.RT_REGISTER_REQ:
+                result = await obj.rt_register_req(cmd)
             case _:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 
         if result is not None:
             await self.comms.send_to_controller(result)
 
-    async def downlink_loop(self) -> None:
-        """Main loop: wait for messages from controller and process them."""
+    async def downlink_loop(self, max_concurrent: int = settings.MAX_CONCURRENT_WORKER_COMMANDS) -> None:
+        """Main loop: wait for messages from controller and process them concurrently, limiting in-flight commands."""
         await self.comms.send_to_controller(HubConnectInd(address=self.address))
-
         logging.debug(f"{self.address.tag} starting read loop")
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = set()
+
+        async def handle_command(command):
+            async with semaphore:
+                try:
+                    await self.execute_command(command)
+                except Exception as e:
+                    logging.error(f"[AP Worker {self.address.tag}] Error processing command: {e}")
+
         while True:
             try:
                 command = await self.comms.get_command()
                 if command is not None:
-                    await self.execute_command(command)
+                    task = asyncio.create_task(handle_command(command))
+                    tasks.add(task)
+                    task.add_done_callback(tasks.discard)
             except Exception as e:
                 logging.error(f"[AP Worker {self.address.tag}] Error receiving command: {e}")
                 await asyncio.sleep(1)

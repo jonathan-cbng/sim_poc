@@ -13,7 +13,8 @@ incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APR
 #######################################################################################################################
 
 import logging
-from enum import StrEnum
+from datetime import UTC, datetime
+from enum import StrEnum, auto
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, PrivateAttr, RootModel, model_validator
@@ -36,9 +37,11 @@ class MessageTypes(StrEnum):
     Enum for message types used as discriminators in AP worker API messages.
     """
 
-    HUB_CONNECT_IND = "hub_connect_ind"
-    AP_REGISTER_REQ = "ap_register_req"
-    AP_REGISTER_IND = "ap_register_ind"
+    HUB_CONNECT_IND = auto()
+    AP_REGISTER_REQ = auto()
+    AP_REGISTER_RSP = auto()
+    RT_REGISTER_REQ = auto()
+    RT_REGISTER_RSP = auto()
 
 
 class Address(BaseModel):
@@ -144,7 +147,7 @@ class APRegisterReq(BaseMessageBody):
     auid: str = Field(description="The auid of this node")
     hub_auid: str = Field(description="AUID of the hub to register with")
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
-    azimuth_deg: int = Field(..., description="Azimuth in degrees to set on the AP", ge=0, le=360)
+    azimuth_deg: int = Field(default=0, description="Azimuth in degrees to set on the AP", ge=0, le=360)
 
 
 class APRegisterRsp(BaseMessageBody):
@@ -156,11 +159,43 @@ class APRegisterRsp(BaseMessageBody):
         registered_at (str): ISO8601 timestamp of registration.
     """
 
-    msg_type: Literal[MessageTypes.AP_REGISTER_IND] = MessageTypes.AP_REGISTER_IND
-    registered_at: str
+    msg_type: Literal[MessageTypes.AP_REGISTER_RSP] = MessageTypes.AP_REGISTER_RSP
+    success: bool = Field(description="True if registration succeeded")
+    registered_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
-class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp]):
+class RTRegisterReq(BaseMessageBody):
+    """
+    Message requesting AP registration.
+
+    Attributes:
+        msg_type (Literal['ap_register_req']): Discriminator for this message type.
+        hub_auid (str): AUID of the hub to register with.
+        heartbeat_seconds (int): Heartbeat interval in seconds.
+    """
+
+    msg_type: Literal[MessageTypes.RT_REGISTER_REQ] = MessageTypes.RT_REGISTER_REQ
+    auid: str = Field(description="The auid of this node")
+    ap_auid: str = Field(description="AUID of the AP to register with")
+    heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
+    azimuth_deg: int = Field(default=0, description="Azimuth in degrees to set on the AP", ge=0, le=360)
+
+
+class RTRegisterRsp(BaseMessageBody):
+    """
+    Message indicating an AP has been registered.
+
+    Attributes:
+        msg_type (Literal['ap_register_ind']): Discriminator for this message type.
+        registered_at (str): ISO8601 timestamp of registration.
+    """
+
+    msg_type: Literal[MessageTypes.RT_REGISTER_RSP] = MessageTypes.RT_REGISTER_RSP
+    success: bool = Field(description="True if registration succeeded")
+    registered_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
+class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp | RTRegisterReq | RTRegisterRsp]):
     """
     Union wrapper for AP worker messages, using 'msg_type' as a discriminator.
 
@@ -168,16 +203,16 @@ class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp]):
     the correct model based on the 'msg_type' field.
 
     Example:
-        >>> from src.worker.worker_api import Message
+        >>> from src.worker.api_types import Message
         >>> msg_json = '{"msg_type": "hub_connect_ind", "address": {"net": 1, "hub": 2, "ap": 3}}'
         >>> msg = Message.model_validate_json(msg_json)
         >>> type(msg.root)
-        <class 'src.worker.worker_api.HubConnectInd'>
+        <class 'src.worker.api_types.HubConnectInd'>
         >>> msg.root.address.net
         1
-        >>> msg2 = Message(APRegisterReq(msg_type="ap_register_req", hub_auid="hub1"))
+        >>> msg2 = Message(APRegisterReq(hub_auid="hub1",auid="auid1", address=Address(net=1,hub=2,ap=3)))
         >>> msg2.model_dump_json()
-        '{"msg_type":"ap_register_req","address":...,"hub_auid":"hub1","num_rts":...}'
+        '{"address":{"net":1,"hub":2,"ap":3,"rt":null},"msg_type":"ap_register_req","auid":"auid1",...}'
     """
 
     model_config = {"discriminator": "msg_type"}

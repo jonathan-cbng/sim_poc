@@ -54,10 +54,14 @@ class Settings(BaseSettings):
     EMAIL_DOMAIN: str = Field("cbng.co.uk", description="Default email domain")
 
     AP_SECRET: str = Field("ap-secret", description="Default AP secret for registration")
-    INSTALLER_KEY: str = Field("test-installer-key", description="Installer key for authentication")
+    INSTALLER_KEY: str = Field(
+        "secret", description="Installer key for authentication. Should match one from the customer db entry"
+    )
     VERIFY_SSL_CERT: bool = Field(False, description="Whether to verify SSL certificates")
 
     HTTPX_TIMEOUT: int = Field(10, description="Timeout for HTTPX requests in seconds")
+
+    MAX_CONCURRENT_WORKER_COMMANDS: int = Field(1, description="Maximum concurrent requests a worker can handle")
 
 
 settings = Settings()  # Load settings from environment variables or .env file if present'
