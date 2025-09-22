@@ -13,7 +13,7 @@ message variants.
 import pytest
 from pydantic import ValidationError
 
-from src.worker.worker_api_types import Address, APRegisterReq, APRegisterRsp, HubConnectInd, Message
+from src.worker.api_types import Address, APRegisterReq, APRegisterRsp, HubConnectInd, Message
 
 #######################################################################################################################
 # Body

@@ -1,3 +1,25 @@
+"""
+worker.py
+
+Simulates a network hub worker that manages Access Points (APs) and Remote Terminals (RTs) within a hub.
+
+This module defines the Worker class, which is responsible for handling commands from a controller, managing
+APs, and facilitating communication between the controller and APs/RTs. The worker communicates using the
+ControllerLink and processes messages using Pydantic models.
+
+Usage:
+    python worker.py <network_idx> <hub_idx> <pub_addr> <pull_addr>
+
+Args:
+    network_idx (int): Network index for the hub address.
+    hub_idx (int): Hub index for the hub address.
+    pub_addr (str): Address for publishing messages to the controller.
+    pull_addr (str): Address for pulling messages from the controller.
+"""
+#######################################################################################################################
+# Imports
+#######################################################################################################################
+
 import argparse
 import asyncio
 import logging
@@ -6,39 +28,68 @@ import shortuuid
 
 from src.config import settings
 from src.worker.ap import AP
-from src.worker.comms import ControllerLink
+from src.worker.api_types import Address, APRegisterReq, HubConnectInd, Message, MessageTypes
+from src.worker.comms import WorkerComms
 from src.worker.node import nodes
-from src.worker.worker_api_types import Address, APRegisterReq, HubConnectInd, Message, MessageTypes
+
+#######################################################################################################################
+# Globals
+#######################################################################################################################
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
     format="%(levelname)s: %(asctime)s %(filename)s:%(lineno)d - %(message)s",
 )
 
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class Worker:
     """Top level worker class that simulates a network hub.
 
     An arbitrary number of APs and RTs can be created within the hub, but for practical
-    purposes we expect each hub to have a up to 32 APs, each with up to 64 RTs.
+    purposes we expect each hub to have up to 32 APs, each with up to 64 RTs.
+
+    Args:
+        address (Address): The address of the hub.
+        comms (WorkerComms): Communication link to the controller.
     """
 
-    def __init__(self, address, comms: ControllerLink):
+    def __init__(self, address: Address, comms: WorkerComms):
+        """Initializes the Worker.
+
+        Args:
+            address (Address): The address of the hub.
+            comms (WorkerComms): Communication link to the controller.
+        """
         self.address = address
         self.auid = str(shortuuid.uuid())
         self.comms = comms
 
-    async def process_register_req(self, command: APRegisterReq):
+    async def process_register_req(self, command: APRegisterReq) -> Message:
+        """Process an AP register request.
+
+        Args:
+            command (APRegisterReq): The AP register request message.
+
+        Returns:
+            Message: The response message from the AP.
+        """
         ap = AP(command.address, self.comms)
         return await ap.process_register_req(command)
 
-    async def execute_command(self, command: Message):
-        """
-        Execute a command received from the controller.
+    async def execute_command(self, command: Message) -> None:
+        """Execute a command received from the controller.
+
         Uses Pydantic message classes for decoding/encoding.
+
+        Args:
+            command (Message): The message received from the controller.
         """
         cmd = command.root
-        logging.debug("Rx ctrl->%s: %r", self.address.tag, cmd)
+        logging.debug(f"Rx ctrl->{self.address.tag}: {cmd!r}")
         obj = nodes.get(cmd.address, self)
         result = None
         match cmd.msg_type:
@@ -50,11 +101,11 @@ class Worker:
         if result is not None:
             await self.comms.send_to_controller(result)
 
-    async def downlink_loop(self):
+    async def downlink_loop(self) -> None:
+        """Main loop: wait for messages from controller and process them."""
         await self.comms.send_to_controller(HubConnectInd(address=self.address))
 
-        logging.debug("%s starting read loop", self.address.tag)
-        # Main loop: wait for messages from controller
+        logging.debug(f"{self.address.tag} starting read loop")
         while True:
             try:
                 command = await self.comms.get_command()
@@ -65,7 +116,8 @@ class Worker:
                 await asyncio.sleep(1)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the worker script."""
     parser = argparse.ArgumentParser(description="AP Worker Stub")
     parser.add_argument("network_idx", type=int)
     parser.add_argument("hub_idx", type=int)
@@ -73,6 +125,14 @@ if __name__ == "__main__":
     parser.add_argument("pull_addr", type=str)
     args = parser.parse_args()
     address = Address(net=args.network_idx, hub=args.hub_idx)
-    comms = ControllerLink(address, args.pull_addr, args.pub_addr)
+    comms = WorkerComms(address, args.pull_addr, args.pub_addr)
     worker = Worker(address, comms)
     asyncio.run(worker.downlink_loop())
+
+
+if __name__ == "__main__":
+    main()
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################

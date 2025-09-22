@@ -1,3 +1,21 @@
+"""
+ap.py
+
+Defines the AP (Access Point) class for the network simulation worker. Handles AP registration with backend APIs and
+manages AP state.
+
+This module is responsible for simulating the registration and management of Access Points (APs) in the network
+simulation. It interacts with both the Network Backend API (NBAPI) and Service Backend API (SBAPI) to register
+APs, secrets, and candidates. The AP class inherits from Node and communicates with the controller via ControllerLink.
+
+Usage:
+    Used internally by the worker process to manage AP lifecycle and registration.
+"""
+
+#######################################################################################################################
+# Imports
+#######################################################################################################################
+
 import logging
 from datetime import UTC, datetime
 
@@ -12,17 +30,38 @@ from src.api_nms import (
     RegisterAPSecretHeaders,
 )
 from src.config import settings
-from src.worker.comms import ControllerLink
+from src.worker.api_types import APRegisterReq, APRegisterRsp
+from src.worker.comms import WorkerComms
 from src.worker.node import Node
-from src.worker.worker_api_types import APRegisterReq, APRegisterRsp
+
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+
+#######################################################################################################################
+# Body
+#######################################################################################################################
 
 
 class AP(Node):
     """
     Class representing an Access Point (AP) in the network simulation.
+
+    Handles registration of the AP with backend APIs and manages AP state.
+
+    Args:
+        address: The address of the AP node.
+        comms (WorkerComms): Communication link to the controller.
     """
 
-    def __init__(self, address, comms: ControllerLink):
+    def __init__(self, address, comms: WorkerComms):
+        """
+        Initialize an AP instance.
+
+        Args:
+            address: The address of the AP node.
+            comms (WorkerComms): Communication link to the controller.
+        """
         super().__init__(address, comms)
         self.parent_auid = None
         self.heartbeat_secs = None
@@ -30,18 +69,25 @@ class AP(Node):
         self.azimuth_deg = None
         self.ap_secret = None
 
-    async def process_register_req(self, command: APRegisterReq):
+    async def process_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
         Handle an AP registration request.
 
         Registration process overview:
-        1. The AP is created in the NBAPI (Network Backend API) with its configuration and parent hub.
-        2. The AP's secret is registered with the SBAPI (Service Backend API) using the AP's AUID and secret.
-        3. The AP is registered as a candidate in the SBAPI, providing the customer CSI, installer key, and chosen AUID.
-        4. If any step fails, the registration process is aborted for this AP.
-        5. On success, the AP is considered registered and ready for further provisioning.
+            1. The AP is created in the NBAPI (Network Backend API) with its configuration and parent hub.
+            2. The AP's secret is registered with the SBAPI (Service Backend API) using the AP's AUID and secret.
+            3. The AP is registered as a candidate in the SBAPI, providing the customer CSI, installer key, and chosen
+               AUID.
+            4. If any step fails, the registration process is aborted for this AP.
+            5. On success, the AP is considered registered and ready for further provisioning.
 
         This method performs the registration and sends an APRegisterInd message back to the controller on success.
+
+        Args:
+            command (APRegisterReq): The AP register request message.
+
+        Returns:
+            APRegisterRsp | None: The response message from the AP, or None if registration failed.
         """
         self.parent_auid = command.hub_auid
         self.heartbeat_secs = command.heartbeat_seconds
@@ -92,13 +138,17 @@ class AP(Node):
                 )
                 res.raise_for_status()
 
-                # Registration successful
-                logging.info("%s: AP registration successful (AUID: %s)", self.address.tag, self.auid)
+                logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
-            return
+            return None
 
         response = APRegisterRsp(address=self.address, registered_at=datetime.now(UTC).isoformat())
 
         # TODO: start heartbeat task here
         return response
+
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################

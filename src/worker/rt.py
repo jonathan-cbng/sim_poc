@@ -1,9 +1,9 @@
-from src.worker.comms import ControllerLink
+from src.worker.comms import WorkerComms
 from src.worker.node import Node
 
 
 class RT(Node):
-    def __init__(self, address, comms: ControllerLink):
+    def __init__(self, address, comms: WorkerComms):
         """
         Class representing a Remote Terminal (RT) in the network simulation.
         """

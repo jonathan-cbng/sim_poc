@@ -3,10 +3,10 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.worker.worker_api_types import Address, Message
+from src.worker.api_types import Address, Message
 
 
-class ControllerLink:
+class WorkerComms:
     """
     Class to manage communication between an AP worker and the controller using ZeroMQ.
     Uses a PUSH socket to send status updates to the controller and a SUB socket to receive commands

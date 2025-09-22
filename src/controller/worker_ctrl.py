@@ -16,7 +16,7 @@ from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import HubCreateRequest, NetworkCreateRequest
 from src.controller.managers import NetworkManager, NetworkState, ParentNodeMixin
-from src.worker.worker_api_types import Address
+from src.worker.api_types import Address
 
 #######################################################################################################################
 # Globals

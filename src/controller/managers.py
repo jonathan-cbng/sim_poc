@@ -21,7 +21,8 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from src.api_nms import NmsAuthInfo, NmsHubCreateRequest
 from src.config import settings
 from src.controller.api import APCreateRequest, HubCreateRequest
-from src.worker.worker_api_types import Address, APRegisterReq, HubConnectInd, worker_ctrl
+from src.controller.comms import worker_ctrl
+from src.worker.api_types import Address, APRegisterReq, HubConnectInd
 
 #######################################################################################################################
 # Body
