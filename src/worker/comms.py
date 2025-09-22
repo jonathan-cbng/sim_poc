@@ -1,3 +1,19 @@
+"""
+comms.py
+
+Manages communication between an AP worker and the controller using ZeroMQ sockets.
+
+This module provides the WorkerComms class, which sets up ZeroMQ PUSH and SUB sockets for sending status updates to
+the controller and receiving commands from the controller, respectively. The SUB socket subscribes to messages tagged
+with the address tag (e.g., "N01H02").
+
+Usage:
+    Used internally by the worker process to send status and receive commands via ZeroMQ.
+"""
+#######################################################################################################################
+# Imports
+#######################################################################################################################
+
 import logging
 
 import zmq
@@ -5,42 +21,69 @@ import zmq.asyncio
 
 from src.worker.api_types import Address, Message
 
+#######################################################################################################################
+# Globals
+#######################################################################################################################
+
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class WorkerComms:
     """
-    Class to manage communication between an AP worker and the controller using ZeroMQ.
+    Manages communication between an AP worker and the controller using ZeroMQ.
+
     Uses a PUSH socket to send status updates to the controller and a SUB socket to receive commands
     from the controller. The SUB socket subscribes to messages tagged with the address tag provided
     (in our case, this is expected to be the Hub tag, e.g. "n0001h0002").
+
+    Args:
+        address (Address): The address of the worker node.
+        pull_addr (str): Address for the controller's PULL socket (for status updates).
+        pub_addr (str): Address for the controller's PUB socket (for commands).
     """
 
     def __init__(self, address: Address, pull_addr: str, pub_addr: str):
-        # Set up PUSH socket (for sending status)
+        """
+        Initialize the WorkerComms instance and set up ZeroMQ sockets.
+
+        Args:
+            address (Address): The address of the worker node.
+            pull_addr (str): Address for the controller's PULL socket (for status updates).
+            pub_addr (str): Address for the controller's PUB socket (for commands).
+        """
         ctx = zmq.asyncio.Context()
         self.address = address
+        # This is for sending status updates to the controller
         self.push_sock = ctx.socket(zmq.PUSH)
         self.push_sock.connect(pull_addr)
-        # Set up PUB socket (for receiving commands)
+
+        # This is for receiving commands from the controller
         self.pub_sock = ctx.socket(zmq.SUB)
         self.pub_sock.connect(pub_addr)
         self.pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
 
-    async def send_to_controller(self, msg):
+    async def send_to_controller(self, msg) -> None:
         """
         Send a message to the controller.
+
         Wraps the payload in a Message root model for correct encoding.
+
+        Args:
+            msg: The message or payload to send (Message or compatible type).
         """
-        # Wrap this message in the Message root model if not already done
         msg = msg if isinstance(msg, Message) else Message(msg)
-        payload = (
-            f"{self.address.tag}: {msg.model_dump_json()}"  # not strictly necessary but makes it symmetric with pub
-        )
+        payload = f"{self.address.tag}: {msg.model_dump_json()}"
         await self.push_sock.send_string(payload)
         logging.debug("Tx %s->controller: %r", self.address.tag, msg.root)
 
-    async def get_command(self) -> Message:
+    async def get_command(self) -> Message | None:
         """
         Receive and decode a command from the controller.
+
+        Returns:
+            Message | None: The decoded Message object, or None if decoding fails.
         """
         message = await self.pub_sock.recv_string()
         data = None
@@ -49,5 +92,9 @@ class WorkerComms:
             data = Message.model_validate_json(json_part)
         except Exception as e:
             logging.error(f"[AP Worker {self.address.tag}] Error decoding message: {e} in message: {message}")
-
         return data
+
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################

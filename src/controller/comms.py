@@ -1,3 +1,20 @@
+"""
+comms.py
+
+Manages communication between the controller and worker nodes using ZeroMQ sockets.
+
+This module provides the ControllerComms class, which sets up ZeroMQ PUB and PULL sockets for sending commands to
+workers and receiving status updates from workers, respectively. The PUB socket is used to send commands to worker
+nodes, and the PULL socket is used to receive status updates from them. The class also provides methods for setting
+up and tearing down the ZeroMQ context and sockets.
+
+Usage:
+    Used internally by the controller process to communicate with worker nodes via ZeroMQ.
+"""
+#######################################################################################################################
+# Imports
+#######################################################################################################################
+
 import logging
 
 import zmq
@@ -5,12 +22,19 @@ import zmq.asyncio
 
 from src.worker.api_types import Message, MessageTypes
 
+#######################################################################################################################
+# Body
+#######################################################################################################################
+
 
 class ControllerComms:
     """
-    Class to manage communication between the controller and worker nodes using ZeroMQ. This class
-    sits on the controller side and uses a PUB socket to send commands to workers and a PULL socket
-    to receive status updates from workers.
+    Manages communication between the controller and worker nodes using ZeroMQ.
+
+    Uses a PUB socket to send commands to workers and a PULL socket to receive status updates from workers.
+
+    Args:
+        None
     """
 
     simulator = None
@@ -19,7 +43,8 @@ class ControllerComms:
         """
         Listens for incoming messages on the PULL socket and processes them.
 
-        simulator: The SimulatorManager instance to route messages to the correct node.
+        Args:
+            simulator: The SimulatorManager instance to route messages to the correct node.
         """
         while True:
             msg_bytes = await self.zmq_pull.recv()
@@ -27,7 +52,7 @@ class ControllerComms:
             try:
                 msg = Message.model_validate_json(msg_bytes)
                 msg = msg.root  # This is the actual message inside the wrapper.
-                logging.debug("Rx %s->ctrl: %r", str(tag), msg)  # All messages from a worker have an ap_address
+                logging.debug("Rx %s->ctrl: %r", str(tag), msg)
                 address = msg.address
                 node = simulator.get_node(address)
             except Exception as e:
@@ -43,7 +68,7 @@ class ControllerComms:
 
     def send(self, msg) -> None:
         """
-        Send a message to an AP via the PUB socket.
+        Send a message to a worker node via the PUB socket.
 
         Args:
             msg: The message to send - this could be a Message, or one of the message subtypes.
@@ -51,7 +76,6 @@ class ControllerComms:
         msg = msg if isinstance(msg, Message) else Message(msg)
         tag = msg.root.address.tag
         logging.debug("Tx ctrl->%s: %r", tag, msg)
-
         pub_message = f"{tag} {msg.model_dump_json()}"
         self.zmq_pub.send_string(pub_message)
 
@@ -80,15 +104,19 @@ class ControllerComms:
         Args:
             app: FastAPI application instance
         """
-        if self.zmq_pub:
+        if hasattr(self, "zmq_pub") and self.zmq_pub:
             self.zmq_pub.close()
-        if self.zmq_pull:
+        if hasattr(self, "zmq_pull") and self.zmq_pull:
             self.zmq_pull.close()
-        if self.zmq_ctx:
+        if hasattr(self, "zmq_ctx") and self.zmq_ctx:
             self.zmq_ctx.term()
         app.state.zmq_ctx = None
         app.state.zmq_pub = None
         app.state.zmq_pull = None
 
 
-worker_ctrl = ControllerComms()  # Singleton instance of the simulator manager - this is the top-level data structure
+worker_ctrl = ControllerComms()  # Singleton instance of the controller comms
+
+#######################################################################################################################
+# End of file
+#######################################################################################################################
