@@ -24,29 +24,12 @@ logging.basicConfig(
 )
 
 
-class AP:
-    def __init__(self, network_idx, hub_idx, ap_idx):
-        self.address = Address(net=network_idx, hub=hub_idx, ap=ap_idx)
-
-
-class Worker:
-    """Top level worker class that simulates a network hub.
-
-    Up to 32 APs can be simulated per hub, each with up to 64 RTs."""
-
-    def __init__(self, network_idx, hub_idx, pub_addr, pull_addr):
-        super().__init__()
-        self.address = Address(net=network_idx, hub=hub_idx)
-        self.ctx = zmq.asyncio.Context()
-        # Set up PUB socket (for receiving commands)
-        self.pub_sock = self.ctx.socket(zmq.SUB)
-        self.pub_sock.connect(pub_addr)
-        self.pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
+class Uplink:
+    def __init__(self, address: Address, pull_addr, ctx: zmq.asyncio.Context):
         # Set up PUSH socket (for sending status)
-        self.push_sock = self.ctx.socket(zmq.PUSH)
+        self.address = address
+        self.push_sock = ctx.socket(zmq.PUSH)
         self.push_sock.connect(pull_addr)
-
-        self.auid = str(shortuuid.uuid())
 
     async def send_to_controller(self, msg):
         """
@@ -61,6 +44,44 @@ class Worker:
         await self.push_sock.send_string(payload)
         logging.debug("Tx %s->controller: %r", self.address.tag, msg.root)
 
+
+nodes: dict[Address, ["AP", "RT"]] = {}
+
+
+class Node:
+    def __init__(self, address, uplink: Uplink):
+        self.uplink = uplink
+        self.address = address
+        nodes[self.address] = self
+
+    def __del__(self):
+        del nodes[self.address]
+
+
+class RT(Node):
+    def __init__(self, address, uplink: Uplink):
+        """
+        Class representing a Remote Terminal (RT) in the network simulation.
+        """
+        super().__init__(address, uplink)
+        self.parent_auid = None
+        self.heartbeat_secs = None
+        self.auid = None
+
+
+class AP(Node):
+    """
+    Class representing an Access Point (AP) in the network simulation.
+    """
+
+    def __init__(self, address, uplink: Uplink):
+        super().__init__(address, uplink)
+        self.parent_auid = None
+        self.heartbeat_secs = None
+        self.auid = None
+        self.azimuth_deg = None
+        self.ap_secret = None
+
     async def process_register_req(self, command: APRegisterReq):
         """
         Handle an AP registration request.
@@ -74,27 +95,20 @@ class Worker:
 
         This method performs the registration and sends an APRegisterInd message back to the controller on success.
         """
+        self.parent_auid = command.hub_auid
+        self.heartbeat_secs = command.heartbeat_seconds
+        self.auid = command.auid
+        self.azimuth_deg = command.azimuth_deg
+        self.ap_secret = shortuuid.uuid()
 
-        # Gather config
-        # NBAPI_URL = settings.NBAPI_URL
-        # SBAPI_URL = settings.SBAPI_URL
-        # NBAPI_AUTH = settings.NBAPI_AUTH
-        # CSI = settings.CSI
-        #
-        # INSTALLER_KEY = settings.INSTALLER_KEY
-        # VERIFY_SSL_CERT = settings.VERIFY_SSL_CERT
-        # AP_SECRET = settings.AP_SECRET
-
-        parent_auid = command.hub_auid
-        ap_auid = self.auid
-        temp_auid = f"T-{ap_auid}"
+        temp_auid = f"T-{self.auid}"
         # Compose AP creation payload using Pydantic model
         ap_payload = NmsAPCreateRequest(
             auid=temp_auid,
-            id=f"ID_{ap_auid}",
-            name=f"NAME_{ap_auid}",
-            parent_auid=parent_auid,
-            azimuth_deg=command.azimuth_deg,
+            id=f"ID_{self.auid}",
+            name=f"NAME_{self.auid}",
+            parent_auid=self.parent_auid,
+            azimuth_deg=self.azimuth_deg,
         )
 
         try:
@@ -110,7 +124,7 @@ class Worker:
                 res.raise_for_status()
 
                 # Step 2: Register AP secret in SBAPI using Pydantic headers
-                secret_headers = RegisterAPSecretHeaders(gnodebid=ap_auid, secret=settings.AP_SECRET)
+                secret_headers = RegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
                 res = await client.post(
                     f"{settings.SBAPI_URL}/ap/register_secret/", json={}, headers=secret_headers.model_dump()
                 )
@@ -122,7 +136,7 @@ class Worker:
                     installer_key=settings.INSTALLER_KEY,
                     chosen_auid=temp_auid,
                 )
-                candidate_headers = RegisterAPCandidateHeaders(gnodebid=ap_auid, secret=settings.AP_SECRET)
+                candidate_headers = RegisterAPCandidateHeaders(gnodebid=self.auid, secret=self.ap_secret)
                 res = await client.post(
                     f"{settings.SBAPI_URL}/ap/register_candidate",
                     json=candidate_payload.model_dump(),
@@ -131,13 +145,30 @@ class Worker:
                 res.raise_for_status()
 
                 # Registration successful
-                logging.info("%s: AP registration successful (AUID: %s)", self.address.tag, ap_auid)
+                logging.info("%s: AP registration successful (AUID: %s)", self.address.tag, self.auid)
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
             return
 
         response = APRegisterRsp(address=self.address, registered_at=datetime.now(UTC).isoformat())
-        await self.send_to_controller(response)
+        await self.uplink.send_to_controller(response)
+
+
+class Worker:
+    """Top level worker class that simulates a network hub.
+
+    Up to 32 APs can be simulated per hub, each with up to 64 RTs."""
+
+    def __init__(self, network_idx, hub_idx, pub_addr, pull_addr):
+        self.zmq_context = zmq.asyncio.Context()
+        self.address = Address(net=network_idx, hub=hub_idx)
+        self.auid = str(shortuuid.uuid())
+        self.pub_addr = pub_addr
+        self.uplink = Uplink(self.address, pull_addr, self.zmq_context)
+
+    async def process_register_req(self, command: APRegisterReq):
+        ap = AP(self.address, self.uplink)
+        await ap.process_register_req(command)
 
     async def execute_command(self, command: Message):
         """
@@ -146,9 +177,10 @@ class Worker:
         """
         cmd = command.root
         logging.debug("Rx ctrl->%s: %r", self.address.tag, cmd)
+        obj = nodes.get(cmd.address, self)
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
-                await self.process_register_req(cmd)
+                await obj.process_register_req(cmd)
             case _:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 
@@ -166,13 +198,18 @@ class Worker:
             logging.error(f"[AP Worker {self.address.tag}] Error decoding message: {e} in message: {message}")
             return None
 
-    async def read_loop(self):
-        await self.send_to_controller(HubConnectInd(address=self.address))
+    async def downlink_loop(self):
+        await self.uplink.send_to_controller(HubConnectInd(address=self.address))
+        # Set up PUB socket (for receiving commands)
+        pub_sock = self.zmq_context.socket(zmq.SUB)
+        pub_sock.connect(self.pub_addr)
+        pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
+
         logging.debug("%s starting read loop", self.address.tag)
         # Main loop: wait for messages from controller
         while True:
             try:
-                message = await self.pub_sock.recv_string()
+                message = await pub_sock.recv_string()
                 command = self.decode_message(message)
                 if command is not None:
                     await self.execute_command(command)
@@ -189,4 +226,4 @@ if __name__ == "__main__":
     parser.add_argument("pull_addr", type=str)
     args = parser.parse_args()
     worker = Worker(args.network_idx, args.hub_idx, args.pub_addr, args.pull_addr)
-    asyncio.run(worker.read_loop())
+    asyncio.run(worker.downlink_loop())
