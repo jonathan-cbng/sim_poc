@@ -14,7 +14,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from src.controller.api import APCreateRequest, Result
 from src.controller.managers import APManager
 from src.controller.worker_ctrl import simulator
-from src.worker.worker_api import Address
+from src.worker.worker_api_types import Address
 
 #######################################################################################################################
 # Globals

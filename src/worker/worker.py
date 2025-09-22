@@ -16,7 +16,7 @@ from src.api_nms import (
     RegisterAPSecretHeaders,
 )
 from src.config import settings
-from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, Message, MessageTypes
+from src.worker.worker_api_types import Address, APRegisterReq, APRegisterRsp, HubConnectInd, Message, MessageTypes
 
 logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
@@ -25,7 +25,7 @@ logging.basicConfig(
 
 
 class Uplink:
-    def __init__(self, address: Address, pull_addr, ctx: zmq.asyncio.Context):
+    def __init__(self, address: Address, pull_addr: str, ctx: zmq.asyncio.Context):
         # Set up PUSH socket (for sending status)
         self.address = address
         self.push_sock = ctx.socket(zmq.PUSH)
@@ -43,6 +43,30 @@ class Uplink:
         )
         await self.push_sock.send_string(payload)
         logging.debug("Tx %s->controller: %r", self.address.tag, msg.root)
+
+
+class Downlink:
+    def __init__(self, pub_addr: str, ctx: zmq.asyncio.Context, address: Address):
+        self.address = address
+        self.pub_addr = pub_addr
+        # Set up PUB socket (for receiving commands)
+        self.pub_sock = ctx.socket(zmq.SUB)
+        self.pub_sock.connect(self.pub_addr)
+        self.pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
+
+    async def get_command(self) -> str:
+        """
+        Receive and decode a command from the controller.
+        """
+        message = await self.pub_sock.recv_string()
+        data = None
+        try:
+            json_part = message.split(" ", 1)[1]
+            data = Message.model_validate_json(json_part)
+        except Exception as e:
+            logging.error(f"[AP Worker {self.address.tag}] Error decoding message: {e} in message: {message}")
+
+        return data
 
 
 nodes: dict[Address, ["AP", "RT"]] = {}
@@ -151,24 +175,28 @@ class AP(Node):
             return
 
         response = APRegisterRsp(address=self.address, registered_at=datetime.now(UTC).isoformat())
-        await self.uplink.send_to_controller(response)
+
+        # TODO: start heartbeat task here
+        return response
 
 
 class Worker:
     """Top level worker class that simulates a network hub.
 
-    Up to 32 APs can be simulated per hub, each with up to 64 RTs."""
+    An arbitrary number of APs and RTs can be created within the hub, but for practical
+    purposes we expect each hub to have a up to 32 APs, each with up to 64 RTs.
+    """
 
-    def __init__(self, network_idx, hub_idx, pub_addr, pull_addr):
-        self.zmq_context = zmq.asyncio.Context()
-        self.address = Address(net=network_idx, hub=hub_idx)
+    def __init__(self, address, pub_addr, pull_addr):
+        self.address = address
         self.auid = str(shortuuid.uuid())
-        self.pub_addr = pub_addr
-        self.uplink = Uplink(self.address, pull_addr, self.zmq_context)
+        context = zmq.asyncio.Context()
+        self.downlink = Downlink(pub_addr, context, address)
+        self.uplink = Uplink(address, pull_addr, context)
 
     async def process_register_req(self, command: APRegisterReq):
-        ap = AP(self.address, self.uplink)
-        await ap.process_register_req(command)
+        ap = AP(command.address, self.uplink)
+        return await ap.process_register_req(command)
 
     async def execute_command(self, command: Message):
         """
@@ -178,39 +206,24 @@ class Worker:
         cmd = command.root
         logging.debug("Rx ctrl->%s: %r", self.address.tag, cmd)
         obj = nodes.get(cmd.address, self)
+        result = None
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
-                await obj.process_register_req(cmd)
+                result = await obj.process_register_req(cmd)
             case _:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 
-    def decode_message(self, message: str) -> Message | None:
-        """
-        Process a message received from the controller.
-        Expected format: '<subscriber_tag> <json_message>'
-        Uses Pydantic Message.model_validate_json for decoding.
-        """
-        try:
-            json_part = message.split(" ", 1)[1]
-            data = Message.model_validate_json(json_part)
-            return data
-        except Exception as e:
-            logging.error(f"[AP Worker {self.address.tag}] Error decoding message: {e} in message: {message}")
-            return None
+        if result is not None:
+            await self.uplink.send_to_controller(result)
 
     async def downlink_loop(self):
         await self.uplink.send_to_controller(HubConnectInd(address=self.address))
-        # Set up PUB socket (for receiving commands)
-        pub_sock = self.zmq_context.socket(zmq.SUB)
-        pub_sock.connect(self.pub_addr)
-        pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
 
         logging.debug("%s starting read loop", self.address.tag)
         # Main loop: wait for messages from controller
         while True:
             try:
-                message = await pub_sock.recv_string()
-                command = self.decode_message(message)
+                command = await self.downlink.get_command()
                 if command is not None:
                     await self.execute_command(command)
             except Exception as e:
@@ -225,5 +238,6 @@ if __name__ == "__main__":
     parser.add_argument("pub_addr", type=str)
     parser.add_argument("pull_addr", type=str)
     args = parser.parse_args()
-    worker = Worker(args.network_idx, args.hub_idx, args.pub_addr, args.pull_addr)
+    address = Address(net=args.network_idx, hub=args.hub_idx)
+    worker = Worker(address, args.pub_addr, args.pull_addr)
     asyncio.run(worker.downlink_loop())

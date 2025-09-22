@@ -24,7 +24,7 @@ from src.controller.routes_ap import ap_router
 from src.controller.routes_hub import hub_router
 from src.controller.routes_network import network_router
 from src.controller.worker_ctrl import simulator
-from src.worker.worker_api import worker_ctrl
+from src.worker.worker_api_types import worker_ctrl
 
 #######################################################################################################################
 # Globals
