@@ -2,6 +2,8 @@
 Worker controller for managing communication with worker processes via ZeroMQ.
 """
 
+import asyncio
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
@@ -63,13 +65,17 @@ class SimulatorManager(ParentNode):
         net_mgr = NetworkManager(address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED)
         self.children[index] = net_mgr
         logging.info(f"Registered network {csni} to customer {req.csi} with northbound API")
-        for _ in range(req.hubs):
-            hub_req = HubCreateRequest(
-                num_aps=req.aps_per_hub,
-                num_rts_per_ap=req.rts_per_ap,
-                heartbeat_seconds=req.ap_heartbeat_seconds,
+        hub_reqs = [
+            net_mgr.add_hub(
+                req=HubCreateRequest(
+                    num_aps=req.aps_per_hub,
+                    num_rts_per_ap=req.rts_per_ap,
+                    heartbeat_seconds=req.ap_heartbeat_seconds,
+                )
             )
-            await net_mgr.add_hub(req=hub_req)
+            for _ in range(req.hubs)
+        ]
+        await asyncio.gather(*hub_reqs)
         return net_mgr
 
     async def remove_network(self, index: int) -> None:

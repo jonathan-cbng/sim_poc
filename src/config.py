@@ -62,7 +62,7 @@ class Settings(BaseSettings):
 
     HTTPX_TIMEOUT: int = Field(10, description="Timeout for HTTPX requests in seconds")
 
-    MAX_CONCURRENT_WORKER_COMMANDS: int = Field(1, description="Maximum concurrent requests a worker can handle")
+    MAX_CONCURRENT_WORKER_COMMANDS: int = Field(16, description="Maximum concurrent requests a worker can handle")
 
 
 settings = Settings()  # Load settings from environment variables or .env file if present'

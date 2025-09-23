@@ -307,8 +307,9 @@ class HubManager(ParentNode):
         await new_ap.register()
 
         req_params = RTCreateRequest(heartbeat_seconds=req.rt_heartbeat_seconds)
-        for i in range(req.num_rts):
-            await new_ap.add_rt(req_params, i)
+        # Batch the add_rt calls using asyncio.gather for concurrency
+        rt_add_tasks = [new_ap.add_rt(req_params, i) for i in range(req.num_rts)]
+        await asyncio.gather(*rt_add_tasks)
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
         return new_ap
 
@@ -433,14 +434,19 @@ class NetworkManager(ParentNode):
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
         hub_mgr.state = HubState.REGISTERED
-        for i in range(req.num_aps):
-            ap_req = APCreateRequest(
-                num_rts=req.num_rts_per_ap,
-                heartbeat_seconds=req.heartbeat_seconds,
-                rt_heartbeat_seconds=req.rt_heartbeat_seconds,
-                azimuth_deg=round(i * (360.0 / req.num_aps)),
+
+        ap_add_requests = [
+            hub_mgr.add_ap(
+                APCreateRequest(
+                    num_rts=req.num_rts_per_ap,
+                    heartbeat_seconds=req.heartbeat_seconds,
+                    rt_heartbeat_seconds=req.rt_heartbeat_seconds,
+                    azimuth_deg=round(i * (360.0 / req.num_aps)),
+                )
             )
-            await hub_mgr.add_ap(ap_req)
+            for i in range(req.num_aps)
+        ]
+        await asyncio.gather(*ap_add_requests)
         return hub_mgr
 
     async def remove_hub(self, index: int) -> None:
