@@ -58,6 +58,7 @@ class SimulatorManager(ParentNode):
                 resp.raise_for_status()
             except httpx.HTTPError as e:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"{e}") from e
+
         result = resp.json()
         csni = result["csni"]
         index = self.get_index(-1)
