@@ -26,7 +26,7 @@ from src.worker.ap import AP
 #######################################################################################################################
 from src.worker.comms import WorkerComms
 from src.worker.node import Node, nodes
-from src.worker.utils import zero_centred_rand
+from src.worker.utils import fix_execution_time, zero_centred_rand
 from src.worker.worker_api import Address, RTRegisterReq, RTRegisterRsp
 
 #######################################################################################################################
@@ -67,17 +67,23 @@ class RT(Node):
         self.auid = None
 
     async def heartbeat(self):
+        """
+        Send periodic heartbeat messages to the SBAPI to indicate the RT is alive.
+        """
         while True:
-            logging.debug(f"RT {self.address.tag}: {self.heartbeat_secs}s heartbeat")
-            async with httpx.AsyncClient(
-                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
-            ) as client:
-                rt_token = NmsAuthInfo.rt_jwt(self.auid)
-                candidate_headers = {"Authorization": f"Bearer {rt_token}"}
-                await client.post(
-                    f"{settings.SBAPI_URL}/api/v1/{self.auid}/heartbeat", json={}, headers=candidate_headers
-                )
-            await asyncio.sleep(self.heartbeat_secs)
+            async with fix_execution_time(self.heartbeat_secs, f"RT {self.address.tag}", logging):
+                logging.debug(f"RT {self.address.tag}: {self.heartbeat_secs}s heartbeat")
+                try:
+                    async with httpx.AsyncClient(
+                        timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+                    ) as client:
+                        rt_token = NmsAuthInfo.rt_jwt(self.auid)
+                        candidate_headers = {"Authorization": f"Bearer {rt_token}"}
+                        await client.post(
+                            f"{settings.SBAPI_URL}/api/v1/{self.auid}/heartbeat", json={}, headers=candidate_headers
+                        )
+                except Exception:
+                    logging.warning(f"RT {self.address.tag}: Heartbeat connection failed")
 
     async def register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """

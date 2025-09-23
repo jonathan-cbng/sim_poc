@@ -32,6 +32,7 @@ from src.nms_api import (
 )
 from src.worker.comms import WorkerComms
 from src.worker.node import Node
+from src.worker.utils import fix_execution_time
 from src.worker.worker_api import APRegisterReq, APRegisterRsp
 
 #######################################################################################################################
@@ -71,15 +72,22 @@ class AP(Node):
         self.lon_deg = self.lat_deg = None
 
     async def heartbeat(self):
+        """
+        Send periodic heartbeat messages to the SBAPI to indicate the AP is alive.
+        """
         while True:
-            logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")
-            async with httpx.AsyncClient(
-                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
-            ) as client:
-                secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
-                await client.post(f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump())
-
-            await asyncio.sleep(self.heartbeat_secs)
+            async with fix_execution_time(self.heartbeat_secs, f"AP {self.address.tag}", logging):
+                logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")
+                try:
+                    async with httpx.AsyncClient(
+                        timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+                    ) as client:
+                        secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
+                        await client.post(
+                            f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump()
+                        )
+                except Exception:
+                    logging.warning(f"AP {self.address.tag}: Heartbeat connection failed")
 
     async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
