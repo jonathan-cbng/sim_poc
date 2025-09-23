@@ -11,6 +11,7 @@ Usage:
     Used internally by the worker process to manage RT lifecycle and state.
 """
 
+import asyncio
 import logging
 import math
 
@@ -64,6 +65,19 @@ class RT(Node):
         self.parent_auid = None
         self.heartbeat_secs = None
         self.auid = None
+
+    async def heartbeat(self):
+        while True:
+            logging.debug(f"RT {self.address.tag}: {self.heartbeat_secs}s heartbeat")
+            async with httpx.AsyncClient(
+                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+            ) as client:
+                rt_token = NmsAuthInfo.rt_jwt(self.auid)
+                candidate_headers = {"Authorization": f"Bearer {rt_token}"}
+                await client.post(
+                    f"{settings.SBAPI_URL}/api/v1/{self.auid}/heartbeat", json={}, headers=candidate_headers
+                )
+            await asyncio.sleep(self.heartbeat_secs)
 
     async def register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """
@@ -136,11 +150,13 @@ class RT(Node):
 
                 logging.info(f"{self.address.tag}: RT registration successful (AUID: {self.auid})")
                 response = RTRegisterRsp(success=True, address=self.address)
+
+                self.heartbeat_task = asyncio.create_task(self.heartbeat())
+
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
             response = RTRegisterRsp(success=False, address=self.address)
 
-        # TODO: start heartbeat task here
         return response
 
 

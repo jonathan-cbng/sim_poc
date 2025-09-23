@@ -12,10 +12,11 @@ Usage:
     Used internally by the worker process to manage AP lifecycle and registration.
 """
 
+import asyncio
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
-
 import logging
 
 import httpx
@@ -68,6 +69,17 @@ class AP(Node):
         self.azimuth_deg = None
         self.ap_secret = None
         self.lon_deg = self.lat_deg = None
+
+    async def heartbeat(self):
+        while True:
+            logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")
+            async with httpx.AsyncClient(
+                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+            ) as client:
+                secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
+                await client.post(f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump())
+
+            await asyncio.sleep(self.heartbeat_secs)
 
     async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
@@ -143,11 +155,12 @@ class AP(Node):
 
                 logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
                 response = APRegisterRsp(success=True, address=self.address)
+
+                self.heartbeat_task = asyncio.create_task(self.heartbeat())
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
             response = APRegisterRsp(success=False, address=self.address)
 
-        # TODO: start heartbeat task here
         return response
 
 
