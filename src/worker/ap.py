@@ -70,6 +70,7 @@ class AP(Node):
         self.azimuth_deg = None
         self.ap_secret = None
         self.lon_deg = self.lat_deg = None
+        self.heartbeat_task = None
 
     async def heartbeat(self):
         """
@@ -88,6 +89,13 @@ class AP(Node):
                         )
                 except Exception:
                     logging.warning(f"AP {self.address.tag}: Heartbeat connection failed")
+
+    async def start_heartbeat_req(self):
+        """
+        Start the heartbeat task for the AP.
+        """
+        if self.heartbeat_task is None or self.heartbeat_task.done():
+            self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
     async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
@@ -164,7 +172,6 @@ class AP(Node):
                 logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
                 response = APRegisterRsp(success=True, address=self.address)
 
-                self.heartbeat_task = asyncio.create_task(self.heartbeat())
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
             response = APRegisterRsp(success=False, address=self.address)

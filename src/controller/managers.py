@@ -28,7 +28,7 @@ from src.controller.ctrl_api import (
     RTState,
 )
 from src.nms_api import NmsAuthInfo, NmsHubCreateRequest
-from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
+from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq, StartHeartbeatReq
 
 #######################################################################################################################
 # Body
@@ -159,6 +159,13 @@ class RTManager(ParentNode):
 
         self._registered_event.set()
 
+    def start_heartbeats(self):
+        """
+        Start heartbeat tasks for all APs and RTs in the hub
+        """
+        msg = StartHeartbeatReq(address=self.address)
+        worker_ctrl.send(msg)
+
 
 class APManager(ParentNode):
     """
@@ -247,6 +254,16 @@ class APManager(ParentNode):
         worker_ctrl.send(ap_req)
 
         await self._registered_event.wait()
+
+    def start_heartbeats(self, recursive: bool = False):
+        """
+        Start heartbeat tasks for all APs and RTs in the hub
+        """
+        msg = StartHeartbeatReq(address=self.address)
+        worker_ctrl.send(msg)
+        if recursive:
+            for rt in self.children.values():
+                rt.start_heartbeats()
 
 
 class HubManager(ParentNode):
@@ -357,6 +374,13 @@ class HubManager(ParentNode):
                 logging.warning(f"Worker process for hub {self.index} did not exit cleanly: {e}")
             self._worker = None
 
+    def start_heartbeats(self):
+        """
+        Start heartbeat tasks for all APs and RTs in the hub
+        """
+        for ap in self.children.values():
+            ap.start_heartbeats(recursive=True)
+
     def __del__(self) -> None:
         with contextlib.suppress(Exception):
             self.stop_worker()
@@ -450,6 +474,13 @@ class NetworkManager(ParentNode):
             dict[int, HubManager]: Dictionary of HubManagers keyed by Hub ID.
         """
         return self.children
+
+    def start_heartbeats(self):
+        """
+        Start heartbeat tasks for all Hubs, APs, and RTs in the network.
+        """
+        for hub in self.children.values():
+            hub.start_heartbeats()
 
 
 #######################################################################################################################

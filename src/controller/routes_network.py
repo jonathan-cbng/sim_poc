@@ -8,8 +8,8 @@ Network Management API routes.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Path
-from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from fastapi import APIRouter, Body, Path
+from starlette.status import HTTP_201_CREATED
 
 from src.controller.ctrl_api import NetworkCreateRequest, NetworkRead, Result
 from src.controller.worker_ctrl import simulator
@@ -29,7 +29,9 @@ async def create_network(
     req: Annotated[NetworkCreateRequest, Body(description="Network creation request")],
 ) -> NetworkRead:
     """
-    Create and start a Network (optionally with initial Hubs).
+    Create a Network (optionally with initial Hubs, APs and RTs).
+
+    Once nodes are created, they will start sending heartbeats to the controller.
 
     Args:
         req (NetworkCreateRequest): Network creation request body.
@@ -38,6 +40,7 @@ async def create_network(
         addr: The address of the newly created Network.
     """
     net_mgr = await simulator.add_network(req)
+    net_mgr.start_heartbeats()
     logging.info(f"Created Network {net_mgr.address}")
     return net_mgr
 
@@ -67,9 +70,6 @@ async def get_network(idx: Annotated[int, Path(description="Network index")]) ->
         NetworkManager: The NetworkManager instance.
     """
     network = simulator.get_network(idx)
-    if not network:
-        logging.warning(f"Network {idx} not found")
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Network not found")
     return network
 
 

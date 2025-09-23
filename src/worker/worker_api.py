@@ -42,6 +42,7 @@ class MessageTypes(StrEnum):
     AP_REGISTER_RSP = auto()
     RT_REGISTER_REQ = auto()
     RT_REGISTER_RSP = auto()
+    START_HEARTBEAT_REQ = auto()
 
 
 class Address(BaseModel):
@@ -195,7 +196,21 @@ class RTRegisterRsp(BaseMessageBody):
     registered_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
-class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp | RTRegisterReq | RTRegisterRsp]):
+class StartHeartbeatReq(BaseMessageBody):
+    """
+    Message requesting the worker to start sending heartbeat messages.
+
+    Attributes:
+        address (Address): The address of the node to start heartbeating.
+        msg_type (Literal['start_heartbeat_req']): Discriminator for this message type.
+    """
+
+    msg_type: Literal[MessageTypes.START_HEARTBEAT_REQ] = MessageTypes.START_HEARTBEAT_REQ
+
+
+class Message(
+    RootModel[HubConnectInd | APRegisterReq | APRegisterRsp | RTRegisterReq | RTRegisterRsp | StartHeartbeatReq]
+):
     """
     Union wrapper for AP worker messages, using 'msg_type' as a discriminator.
 

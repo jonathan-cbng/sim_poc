@@ -65,6 +65,7 @@ class RT(Node):
         self.parent_auid = None
         self.heartbeat_secs = None
         self.auid = None
+        self.heartbeat_task = None
 
     async def heartbeat(self):
         """
@@ -84,6 +85,13 @@ class RT(Node):
                         )
                 except Exception:
                     logging.warning(f"RT {self.address.tag}: Heartbeat connection failed")
+
+    async def start_heartbeat_req(self):
+        """
+        Start the heartbeat task for the AP.
+        """
+        if self.heartbeat_task is None or self.heartbeat_task.done():
+            self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
     async def register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """
@@ -156,8 +164,6 @@ class RT(Node):
 
                 logging.info(f"{self.address.tag}: RT registration successful (AUID: {self.auid})")
                 response = RTRegisterRsp(success=True, address=self.address)
-
-                self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")

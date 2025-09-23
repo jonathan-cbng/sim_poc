@@ -105,13 +105,15 @@ class Worker:
         """
         cmd = command.root
         logging.debug(f"Rx ctrl->{self.address.tag}: {cmd!r}")
-        obj = nodes.get(cmd.address, self)
+        obj: Worker | RT | AP = nodes.get(cmd.address, self)
         result = None
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
                 result = await obj.ap_register_req(cmd)
             case MessageTypes.RT_REGISTER_REQ:
                 result = await obj.rt_register_req(cmd)
+            case MessageTypes.START_HEARTBEAT_REQ:
+                result = await obj.start_heartbeat_req()
             case _:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 
