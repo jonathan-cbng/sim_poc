@@ -20,7 +20,7 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.worker.api_types import Message
+from src.worker.worker_api import Message
 
 #######################################################################################################################
 # Body

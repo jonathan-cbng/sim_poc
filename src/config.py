@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     PULL_PORT: int = Field(12502, description="Port for receiving messages from AP simulators")
 
     SECRET_KEY: str = Field("Hello", description="Secret key for authentication")
+    SECRET_KEY_RT: str = Field("Hello", description="Secret key for RT authentication")
     ALGORITHM: str = Field("HS256", description="Algorithm for token encoding")
 
     TOKEN_EXPIRY_SECONDS: int = Field(3600 * 24, description="Token expiry in seconds (1 day)")

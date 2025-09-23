@@ -1,4 +1,4 @@
-from src.api_nms import NmsHubCreateRequest
+from src.nms_api import NmsHubCreateRequest
 
 
 def test_hub_create_request_autofill():

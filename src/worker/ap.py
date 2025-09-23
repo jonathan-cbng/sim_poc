@@ -21,17 +21,17 @@ import logging
 import httpx
 import shortuuid
 
-from src.api_nms import (
+from src.config import settings
+from src.nms_api import (
     NmsAPCreateRequest,
     NmsAuthInfo,
     NmsRegisterAPCandidateHeaders,
     NmsRegisterAPCandidateRequest,
     NmsRegisterAPSecretHeaders,
 )
-from src.config import settings
-from src.worker.api_types import APRegisterReq, APRegisterRsp
 from src.worker.comms import WorkerComms
 from src.worker.node import Node
+from src.worker.worker_api import APRegisterReq, APRegisterRsp
 
 #######################################################################################################################
 # Globals
@@ -67,6 +67,7 @@ class AP(Node):
         self.auid = None
         self.azimuth_deg = None
         self.ap_secret = None
+        self.lon_deg = self.lat_deg = None
 
     async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
@@ -115,6 +116,9 @@ class AP(Node):
                     headers=NmsAuthInfo().auth_header(),
                 )
                 res.raise_for_status()
+                ap_data = res.json()
+                self.lat_deg = ap_data["lat_deg"]
+                self.lon_deg = ap_data["lon_deg"]
 
                 # Step 2: Register AP secret in SBAPI using Pydantic headers
                 secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)

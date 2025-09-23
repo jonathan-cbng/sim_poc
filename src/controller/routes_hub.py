@@ -11,10 +11,10 @@ from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Path
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.controller.api import HubCreateRequest, Result
+from src.controller.ctrl_api import HubCreateRequest, Result
 from src.controller.managers import HubManager
 from src.controller.worker_ctrl import simulator
-from src.worker.api_types import Address
+from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals

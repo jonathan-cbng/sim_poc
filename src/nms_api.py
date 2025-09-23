@@ -1,12 +1,12 @@
 import time
 from datetime import UTC, datetime
-from random import random
 
 import jwt
 import shortuuid
 from pydantic import BaseModel, Field, model_validator
 
 from src.config import settings
+from src.worker.utils import zero_centred_rand
 
 
 class NmsAuthInfo(BaseModel):
@@ -59,6 +59,19 @@ class NmsAuthInfo(BaseModel):
 
         return jwt.encode(self.model_dump(), settings.SECRET_KEY, settings.ALGORITHM)
 
+    @staticmethod
+    def rt_jwt(auid: str, expiry_seconds: int = settings.TOKEN_EXPIRY_SECONDS) -> str:
+        """
+        Generate a JWT token for an RT with the specified expiry.
+        """
+        expiry_time = int(time.time() + expiry_seconds)
+        payload = {
+            "auid": auid,
+            "expire_day": datetime.fromtimestamp(expiry_time, tz=UTC).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        return jwt.encode(payload, settings.SECRET_KEY_RT, settings.ALGORITHM)
+
 
 # --- NetworkCreateRequest and related models for NBAPI network creation ---
 
@@ -110,8 +123,6 @@ class NmsCommonCreateRequest(BaseModel):
     id: str | None = None
     auid: str = Field(default_factory=shortuuid.uuid)
     name: str | None = None
-    lat_deg: float = Field(default_factory=lambda: 51.5072 + random() * settings.MAX_DIFF_DEG)
-    lon_deg: float = Field(default_factory=lambda: 0.1276 + random() * settings.MAX_DIFF_DEG)
     address: str = "None"
     node_status: str = Field(default="Planned")
     notes: str = Field(default="No notes")
@@ -126,8 +137,8 @@ class NmsCommonCreateRequest(BaseModel):
 class NmsHubCreateRequest(NmsCommonCreateRequest):
     csni: str
     address: str = "None"
-    lat_deg: float = Field(default_factory=lambda: 51.5072 + random() * settings.MAX_DIFF_DEG)
-    lon_deg: float = Field(default_factory=lambda: 0.1276 + random() * settings.MAX_DIFF_DEG)
+    lat_deg: float = Field(default_factory=lambda: 51.5072 + zero_centred_rand(settings.MAX_DIFF_DEG))
+    lon_deg: float = Field(default_factory=lambda: 0.1276 + zero_centred_rand(settings.MAX_DIFF_DEG))
 
 
 class NmsAPConfiguration(BaseModel):
@@ -186,6 +197,8 @@ class NmsRTCreateRequest(NmsCommonCreateRequest):
     height_mast_m: int = 20
     height_asl_m: int = 21
     network_details: dict = Field(default_factory=lambda: {"rt_wwan_1_ipv6_address": None})
+    lat_deg: float  # Needs to be <20km from hub (AP inherits from hub)
+    lon_deg: float  # Needs to be <20km from hub (AP inherits from hub)
 
 
 class NmsRTRegisterParam(BaseModel):

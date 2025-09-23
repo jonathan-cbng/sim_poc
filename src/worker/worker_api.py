@@ -1,7 +1,7 @@
 """
-Message and address models for AP worker API.
+Message and address models for hub worker API.
 
-This module defines the data models for messages exchanged between the control plane and the AP worker process. It uses
+This module defines the data models for messages exchanged between the control plane and the hub worker process. It uses
 Pydantic v2 models with a union type and a discriminator (msg_type) to enable robust, type-safe serialization and
 deserialization of heterogeneous message types.
 
@@ -203,16 +203,13 @@ class Message(RootModel[HubConnectInd | APRegisterReq | APRegisterRsp | RTRegist
     the correct model based on the 'msg_type' field.
 
     Example:
-        >>> from src.worker.api_types import Message
-        >>> msg_json = '{"msg_type": "hub_connect_ind", "address": {"net": 1, "hub": 2, "ap": 3}}'
-        >>> msg = Message.model_validate_json(msg_json)
-        >>> type(msg.root)
-        <class 'src.worker.api_types.HubConnectInd'>
-        >>> msg.root.address.net
-        1
-        >>> msg2 = Message(APRegisterReq(hub_auid="hub1",auid="auid1", address=Address(net=1,hub=2,ap=3)))
-        >>> msg2.model_dump_json()
-        '{"address":{"net":1,"hub":2,"ap":3,"rt":null},"msg_type":"ap_register_req","auid":"auid1",...}'
+        >>> from src.worker.worker_api import Message
+        >>> msg=HubConnectInd(address=Address(net=1, hub=2))
+        >>> json = msg.model_dump_json()
+        >>> json
+        '{"address":{"net":1,"hub":2,"ap":null,"rt":null},"msg_type":"hub_connect_ind"}'
+        >>> Message.model_validate_json(json).root
+        HubConnectInd(address=Address(net=1, hub=2, ap=None, rt=None), msg_type=<MessageTypes.HUB_CONNECT_IND: ...>)
     """
 
     model_config = {"discriminator": "msg_type"}

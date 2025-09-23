@@ -28,10 +28,10 @@ import shortuuid
 
 from src.config import settings
 from src.worker.ap import AP
-from src.worker.api_types import Address, APRegisterReq, HubConnectInd, Message, MessageTypes, RTRegisterReq
 from src.worker.comms import WorkerComms
 from src.worker.node import nodes
 from src.worker.rt import RT
+from src.worker.worker_api import Address, APRegisterReq, HubConnectInd, Message, MessageTypes, RTRegisterReq
 
 #######################################################################################################################
 # Globals

@@ -12,23 +12,29 @@ Usage:
 """
 
 import logging
+import math
 
 import httpx
-import shortuuid
 
-from src.api_nms import NmsAuthInfo, NmsRTCreateRequest, NmsRTRegisterParam, NmsRTRegisterRequest
 from src.config import settings
-from src.worker.api_types import RTRegisterReq, RTRegisterRsp
+from src.nms_api import NmsAuthInfo, NmsRTCreateRequest, NmsRTRegisterParam, NmsRTRegisterRequest
+from src.worker.ap import AP
 
 #######################################################################################################################
 # Imports
 #######################################################################################################################
 from src.worker.comms import WorkerComms
-from src.worker.node import Node
+from src.worker.node import Node, nodes
+from src.worker.utils import zero_centred_rand
+from src.worker.worker_api import Address, RTRegisterReq, RTRegisterRsp
 
 #######################################################################################################################
 # Globals
 #######################################################################################################################
+
+MAX_AP_RT_DIST = 20  # km
+EARTH_RADIUS = 6371
+MAX_AP_RT_DEG = MAX_AP_RT_DIST / (2 * math.pi * EARTH_RADIUS) * 360 / math.sqrt(2)
 
 #######################################################################################################################
 # Body
@@ -76,11 +82,11 @@ class RT(Node):
         Returns:
             RTRegisterRsp if successful, None otherwise.
         """
+        parent_ap: AP = nodes[Address(net=self.address.net, hub=self.address.hub, ap=self.address.ap)]
         self.parent_auid = command.ap_auid
         self.heartbeat_secs = command.heartbeat_seconds
         self.auid = command.auid
         self.azimuth_deg = command.azimuth_deg
-        self.token = shortuuid.uuid()
 
         temp_auid = f"T-{self.auid}"
         try:
@@ -97,8 +103,8 @@ class RT(Node):
                     node_priority="Gold",
                     node_status="Active",
                     address="NONE",
-                    lat_deg=51.5072,  # or use a value from command if available
-                    lon_deg=0.1276,  # or use a value from command if available
+                    lat_deg=parent_ap.lat_deg + zero_centred_rand(MAX_AP_RT_DEG),
+                    lon_deg=parent_ap.lon_deg + zero_centred_rand(MAX_AP_RT_DEG),
                     height_mast_m=20,
                     height_asl_m=21,
                     notes="NONE",
@@ -113,13 +119,14 @@ class RT(Node):
                 res.raise_for_status()
 
                 # Step 2: Register RT in SBAPI using Pydantic models
+                rt_token = NmsAuthInfo.rt_jwt(self.auid)
                 reg_payload = NmsRTRegisterRequest(
                     params=[
                         NmsRTRegisterParam(name="imei", type="blank", value=self.auid),
-                        NmsRTRegisterParam(name="rt.nms.rt_access_token", type="blank", value=self.token),
+                        NmsRTRegisterParam(name="rt.nms.rt_access_token", type="blank", value=rt_token),
                     ]
                 )
-                candidate_headers = {"Authorization": f"Bearer {self.token}"}
+                candidate_headers = {"Authorization": f"Bearer {rt_token}"}
                 res = await client.post(
                     f"{settings.SBAPI_URL}/api/v1/T-{self.auid}/rt-registration",
                     json=reg_payload.model_dump(),

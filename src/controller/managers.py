@@ -18,11 +18,11 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, Field, PrivateAttr
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
-from src.api_nms import NmsAuthInfo, NmsHubCreateRequest
 from src.config import settings
-from src.controller.api import APCreateRequest, HubCreateRequest
 from src.controller.comms import worker_ctrl
-from src.worker.api_types import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
+from src.controller.ctrl_api import APCreateRequest, HubCreateRequest
+from src.nms_api import NmsAuthInfo, NmsHubCreateRequest
+from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
 
 #######################################################################################################################
 # Body
@@ -36,7 +36,6 @@ class ParentNode(BaseModel):
 
     children: dict[int, Any] = Field(default_factory=dict, description="Child nodes of this node")
     address: Address = Field(description="The address of this node - sort of a fully qualified name")
-    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
 
     def get_index(self, requested: int = -1) -> int:
         """
@@ -117,6 +116,7 @@ class RTManager(BaseModel):
 
     address: Address = Field(description="The address of this node - sort of a fully qualified name")
     auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
+    ap_auid: str = Field(description="The auid of the parent AP")
 
     state: RTState = RTState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
@@ -137,7 +137,7 @@ class RTManager(BaseModel):
         register_req = RTRegisterReq(
             address=self.address,
             heartbeat_seconds=self.heartbeat_seconds,
-            ap_auid=self.auid,
+            ap_auid=self.ap_auid,
             auid=self.auid,
         )
         worker_ctrl.send(register_req)
@@ -168,7 +168,8 @@ class APManager(ParentNode):
     children: dict[int, RTManager] = Field(default_factory=dict)
     state: APState = APState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
-    hub_auid: str
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
+    hub_auid: str = Field(description="The auid of the parent AP")
 
     _registered_event: asyncio.Event = PrivateAttr()
 
@@ -236,6 +237,7 @@ class HubManager(ParentNode):
 
     state: HubState = HubState.UNREGISTERED
     children: dict[int, APManager] = Field(default_factory=dict)
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
 
     _worker: subprocess.Popen | None = PrivateAttr(default=None)
     _connected_event: asyncio.Event = PrivateAttr(default_factory=asyncio.Event)
@@ -267,7 +269,7 @@ class HubManager(ParentNode):
         rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            rts[i] = rt = RTManager(address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
+            rts[i] = rt = RTManager(address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=new_ap.auid)
             await rt.register()
         new_ap.children = rts
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")

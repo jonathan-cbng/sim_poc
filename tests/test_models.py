@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import jwt
 
 from src import config
-from src.api_nms import NmsAuthInfo
+from src.nms_api import NmsAuthInfo
 
 
 class TestAuthInfo:

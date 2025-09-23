@@ -19,7 +19,7 @@ import logging
 import zmq
 import zmq.asyncio
 
-from src.worker.api_types import Address, Message
+from src.worker.worker_api import Address, Message
 
 #######################################################################################################################
 # Globals

@@ -10,18 +10,21 @@ The class also handles automatic registration and deregistration of nodes to the
 Usage:
     Used internally by the worker process to manage node lifecycle and lookup.
 """
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
 
-from src.worker.api_types import Address
+from typing import Any
+
 from src.worker.comms import WorkerComms
+from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals
 #######################################################################################################################
 
-nodes: dict[Address, "Node"] = {}
+nodes: dict[Address, Any] = {}
 
 #######################################################################################################################
 # Body

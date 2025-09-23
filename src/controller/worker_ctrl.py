@@ -11,12 +11,12 @@ import httpx
 from fastapi import HTTPException
 from starlette import status
 
-from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
 from src.config import settings
-from src.controller.api import HubCreateRequest, NetworkCreateRequest
 from src.controller.comms import ControllerComms
+from src.controller.ctrl_api import HubCreateRequest, NetworkCreateRequest
 from src.controller.managers import APManager, HubManager, NetworkManager, NetworkState, ParentNode, RTManager
-from src.worker.api_types import Address, MessageTypes
+from src.nms_api import NmsAuthInfo, NmsNetworkCreateRequest
+from src.worker.worker_api import Address, MessageTypes
 
 #######################################################################################################################
 # Globals
