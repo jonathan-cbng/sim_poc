@@ -116,11 +116,11 @@ class Worker:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 
         if result is not None:
-            await self.comms.send_to_controller(result)
+            await self.comms.send_msg(result)
 
     async def downlink_loop(self, max_concurrent: int = settings.MAX_CONCURRENT_WORKER_COMMANDS) -> None:
         """Main loop: wait for messages from controller and process them concurrently, limiting in-flight commands."""
-        await self.comms.send_to_controller(HubConnectInd(address=self.address))
+        await self.comms.send_msg(HubConnectInd(address=self.address))
         logging.debug(f"{self.address.tag} starting read loop")
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = set()
@@ -134,7 +134,7 @@ class Worker:
 
         while True:
             try:
-                command = await self.comms.get_command()
+                command = await self.comms.recv_msg()
                 if command is not None:
                     task = asyncio.create_task(handle_command(command))
                     tasks.add(task)

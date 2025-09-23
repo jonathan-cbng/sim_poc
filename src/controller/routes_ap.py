@@ -31,7 +31,7 @@ async def create_ap(
     network_idx: Annotated[int, Path(description="Network index")],
     hub_idx: Annotated[int, Path(description="Hub index")],
     req: Annotated[APCreateRequest, Body(description="AP creation request")],
-) -> int:
+) -> Address:
     """
     Create and start an AP (optionally with initial RTs).
 
@@ -41,13 +41,13 @@ async def create_ap(
         req (APCreateRequest): AP creation request body.
 
     Returns:
-        int: The ID of the newly created AP.
+        addr: The address of the newly created AP.
     """
     address = Address(net=network_idx, hub=hub_idx)
     hub = simulator.get_node(address)
     ap_obj = await hub.add_ap(req)
-    logging.info(f"Created AP {ap_obj.index} in hub {hub_idx} (network {network_idx})")
-    return ap_obj.index
+    logging.info(f"Created AP {ap_obj.address})")
+    return ap_obj.address
 
 
 @ap_router.get("/")

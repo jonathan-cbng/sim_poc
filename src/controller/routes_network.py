@@ -14,6 +14,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from src.controller.api import NetworkCreateRequest, Result
 from src.controller.managers import NetworkManager
 from src.controller.worker_ctrl import simulator
+from src.worker.api_types import Address
 
 #######################################################################################################################
 # Globals
@@ -28,7 +29,7 @@ network_router = APIRouter(prefix="/network", tags=["Network Management"])
 @network_router.post("/", status_code=HTTP_201_CREATED)
 async def create_network(
     req: Annotated[NetworkCreateRequest, Body(description="Network creation request")],
-) -> int:
+) -> Address:
     """
     Create and start a Network (optionally with initial Hubs).
 
@@ -36,11 +37,11 @@ async def create_network(
         req (NetworkCreateRequest): Network creation request body.
 
     Returns:
-        int: The ID of the newly created Network.
+        addr: The address of the newly created Network.
     """
-    new_id = await simulator.add_network(req)
-    logging.info(f"Created Network {new_id}")
-    return new_id
+    net_mgr = await simulator.add_network(req)
+    logging.info(f"Created Network {net_mgr.address}")
+    return net_mgr.address
 
 
 @network_router.get("/")

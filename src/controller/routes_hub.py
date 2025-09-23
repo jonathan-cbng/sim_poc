@@ -14,6 +14,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from src.controller.api import HubCreateRequest, Result
 from src.controller.managers import HubManager
 from src.controller.worker_ctrl import simulator
+from src.worker.api_types import Address
 
 #######################################################################################################################
 # Globals
@@ -29,7 +30,7 @@ hub_router = APIRouter(prefix="/network/{network_idx}/hub", tags=["Hub Managemen
 async def create_hub(
     network_idx: Annotated[int, Path(description="Network index")],
     req: Annotated[HubCreateRequest, Body(description="Hub creation request")],
-) -> int:
+) -> Address:
     """
     Create and start a Hub (optionally with initial APs and RTs).
 
@@ -41,9 +42,9 @@ async def create_hub(
         int: The ID of the newly created Hub.
     """
     network = simulator.get_network(network_idx)
-    new_id = await network.add_hub(req)
-    logging.info(f"Created Hub {new_id} in network {network_idx}")
-    return new_id
+    hub = await network.add_hub(req)
+    logging.info(f"Created Hub {hub.address}")
+    return hub.address
 
 
 @hub_router.get("/")

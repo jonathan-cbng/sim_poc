@@ -29,13 +29,14 @@ from src.worker.api_types import Address, APRegisterReq, APRegisterRsp, HubConne
 #######################################################################################################################
 
 
-class ParentNodeMixin:
+class ParentNode(BaseModel):
     """
     Mixin class for parent nodes that manage child nodes.
     """
 
-    index: int
-    children: dict[int, Any]
+    children: dict[int, Any] = Field(default_factory=dict, description="Child nodes of this node")
+    address: Address = Field(description="The address of this node - sort of a fully qualified name")
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
 
     def get_index(self, requested: int = -1) -> int:
         """
@@ -96,22 +97,6 @@ class ParentNodeMixin:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
 
 
-class ManagerNode(BaseModel):
-    """
-    Base class for manager nodes in the NMS network simulator.
-
-    Args:
-        index (int): Node index.
-        children (dict[int, Any]): Child nodes.
-        address (Address): Fully qualified address of the node.
-        auid (str): Unique node identifier.
-    """
-
-    index: int
-    address: Address = Field(description="The address of this node - sort of a fully qualified name")
-    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
-
-
 class RTState(StrEnum):
     """
     Enum for RT registration state.
@@ -121,7 +106,7 @@ class RTState(StrEnum):
     REGISTERED = auto()
 
 
-class RTManager(ManagerNode):
+class RTManager(BaseModel):
     """
     Manager for RT nodes.
 
@@ -129,6 +114,9 @@ class RTManager(ManagerNode):
         state (RTState): Registration state.
         heartbeat_seconds (int): Heartbeat interval.
     """
+
+    address: Address = Field(description="The address of this node - sort of a fully qualified name")
+    auid: str = Field(default_factory=shortuuid.uuid, description="The auid of this node")
 
     state: RTState = RTState.UNREGISTERED
     heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
@@ -167,7 +155,7 @@ class APState(StrEnum):
     REGISTRATION_FAILED = auto()
 
 
-class APManager(ParentNodeMixin, ManagerNode):
+class APManager(ParentNode):
     """
     Manager for AP nodes.
 
@@ -241,7 +229,7 @@ class HubState(StrEnum):
     REGISTERED = auto()
 
 
-class HubManager(ParentNodeMixin, ManagerNode):
+class HubManager(ParentNode):
     """
     Manager for Hub nodes.
     """
@@ -269,7 +257,6 @@ class HubManager(ParentNodeMixin, ManagerNode):
         ap_idx = self.get_index(ap_idx)
         ap_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx)
         new_ap = APManager(
-            index=ap_idx,
             address=ap_address,
             heartbeat_seconds=req.heartbeat_seconds,
             hub_auid=self.auid,
@@ -280,7 +267,7 @@ class HubManager(ParentNodeMixin, ManagerNode):
         rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            rts[i] = rt = RTManager(index=i, address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
+            rts[i] = rt = RTManager(address=rt_address, heartbeat_seconds=req.heartbeat_seconds)
             await rt.register()
         new_ap.children = rts
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
@@ -364,7 +351,7 @@ class NetworkState(StrEnum):
     REGISTERED = auto()
 
 
-class NetworkManager(ParentNodeMixin, ManagerNode):
+class NetworkManager(ParentNode):
     """
     Manager for Network nodes.
 
@@ -380,7 +367,7 @@ class NetworkManager(ParentNodeMixin, ManagerNode):
     state: NetworkState = NetworkState.UNREGISTERED
     children: dict[int, HubManager] = Field(default_factory=dict)
 
-    async def add_hub(self, req: HubCreateRequest, index: int = -1) -> int:
+    async def add_hub(self, req: HubCreateRequest, index: int = -1) -> HubManager:
         """
         Add a Hub to the network and start its worker process.
 
@@ -393,7 +380,7 @@ class NetworkManager(ParentNodeMixin, ManagerNode):
         """
         index = self.get_index(index)
         hub_address = Address(net=self.address.net, hub=index)
-        hub_mgr = HubManager(index=index, address=hub_address)
+        hub_mgr = HubManager(address=hub_address)
         self.children[index] = hub_mgr
         await hub_mgr.start_worker()
         hub_req = NmsHubCreateRequest(csni=self.csni, auid=hub_mgr.auid)
@@ -415,7 +402,7 @@ class NetworkManager(ParentNodeMixin, ManagerNode):
                 azimuth_deg=round(i * (360.0 / req.num_aps)),
             )
             await hub_mgr.add_ap(ap_req)
-        return index
+        return hub_mgr
 
     async def remove_hub(self, index: int) -> None:
         """

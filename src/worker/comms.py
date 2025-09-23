@@ -64,7 +64,7 @@ class WorkerComms:
         self.pub_sock.connect(pub_addr)
         self.pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
 
-    async def send_to_controller(self, msg) -> None:
+    async def send_msg(self, msg) -> None:
         """
         Send a message to the controller.
 
@@ -78,7 +78,7 @@ class WorkerComms:
         await self.push_sock.send_string(payload)
         logging.debug("Tx %s->controller: %r", self.address.tag, msg.root)
 
-    async def get_command(self) -> Message | None:
+    async def recv_msg(self) -> Message | None:
         """
         Receive and decode a command from the controller.
 

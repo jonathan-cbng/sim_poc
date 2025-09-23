@@ -6,7 +6,6 @@ Worker controller for managing communication with worker processes via ZeroMQ.
 # Imports
 #######################################################################################################################
 import logging
-from typing import Any
 
 import httpx
 from fastapi import HTTPException
@@ -16,7 +15,7 @@ from src.api_nms import NmsAuthInfo, NmsNetworkCreateRequest
 from src.config import settings
 from src.controller.api import HubCreateRequest, NetworkCreateRequest
 from src.controller.comms import ControllerComms
-from src.controller.managers import NetworkManager, NetworkState, ParentNodeMixin
+from src.controller.managers import APManager, HubManager, NetworkManager, NetworkState, ParentNode, RTManager
 from src.worker.api_types import Address, MessageTypes
 
 #######################################################################################################################
@@ -28,7 +27,7 @@ from src.worker.api_types import Address, MessageTypes
 #######################################################################################################################
 
 
-class SimulatorManager(ParentNodeMixin):
+class SimulatorManager(ParentNode):
     """
     Top-level manager for the NMS network simulator.
 
@@ -36,10 +35,10 @@ class SimulatorManager(ParentNodeMixin):
     context and sockets for communication with worker processes (which are children of HubManager instances).
     """
 
-    def __init__(self):
+    def model_post_init(self, context):
         self.children: dict[int, NetworkManager] = {}
 
-    async def add_network(self, req: NetworkCreateRequest) -> int:
+    async def add_network(self, req: NetworkCreateRequest) -> NetworkManager:
         """
         Add a Network to the NMS and register it with the northbound API.
 
@@ -56,12 +55,12 @@ class SimulatorManager(ParentNodeMixin):
                 resp = await client.post(url, json=create_req.model_dump())
                 resp.raise_for_status()
             except httpx.HTTPError as e:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"{e.request}: {e.response}") from e
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"{e}") from e
         result = resp.json()
         csni = result["csni"]
         index = self.get_index(-1)
         address = Address(net=index)
-        net_mgr = NetworkManager(index=index, address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED)
+        net_mgr = NetworkManager(address=address, csi=req.csi, csni=csni, state=NetworkState.REGISTERED)
         self.children[index] = net_mgr
         logging.info(f"Registered network {csni} to customer {req.csi} with northbound API")
         for _ in range(req.hubs):
@@ -71,7 +70,7 @@ class SimulatorManager(ParentNodeMixin):
                 heartbeat_seconds=req.ap_heartbeat_seconds,
             )
             await net_mgr.add_hub(req=hub_req)
-        return net_mgr.index
+        return net_mgr
 
     async def remove_network(self, index: int) -> None:
         """
@@ -104,7 +103,7 @@ class SimulatorManager(ParentNodeMixin):
         """
         return self.children
 
-    def get_node(self, address: Address) -> Any:
+    def get_node(self, address: Address) -> NetworkManager | HubManager | APManager | RTManager:
         """
         Resolve this address to the correct manager node in the NMS hierarchy.
 
@@ -114,20 +113,18 @@ class SimulatorManager(ParentNodeMixin):
         Returns:
             Any: The object at this address.
         """
-        instance = self.get_network(address.net)
+        instance: NetworkManager = self.get_network(address.net)
         if address.hub is not None:
-            instance = instance.get_hub(address.hub)
+            instance: HubManager = instance.get_hub(address.hub)
             if address.ap is not None:
-                instance = instance.get_ap(address.ap)
+                instance: APManager = instance.get_ap(address.ap)
                 if address.rt is not None:
-                    instance = instance.get_rt(address.rt)
+                    instance: RTManager = instance.get_rt(address.rt)
         return instance
-
-    simulator = None
 
     async def listener(self, worker_ctrl: ControllerComms) -> None:
         """
-        Listens for incoming messages on the PULL socket and processes them.
+        Listens for incoming messages from workers on the PULL socket and processes them.
 
         Args:
             simulator: The SimulatorManager instance to route messages to the correct node.
@@ -147,7 +144,9 @@ class SimulatorManager(ParentNodeMixin):
                         logging.warning(f"Unknown event type: {msg.msg_type}")
 
 
-simulator = SimulatorManager()  # Singleton instance of the simulator manager - this is the top-level data structure
+simulator = SimulatorManager(
+    address=Address()
+)  # Singleton instance of the simulator manager - this is the top-level data structure
 
 #######################################################################################################################
 # End of file
