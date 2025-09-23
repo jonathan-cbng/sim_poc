@@ -208,7 +208,7 @@ class APManager(ParentNode):
             address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=self.auid, auid_prefix=self.auid_prefix
         )
         await rt.register()
-        logging.info(f"Created RT {self.address}")
+        logging.info(f"Created RT {rt.address}")
         return rt
 
     def get_rt(self, index: int) -> RTManager:

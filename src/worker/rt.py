@@ -14,6 +14,7 @@ Usage:
 import asyncio
 import logging
 import math
+from random import random
 
 import httpx
 
@@ -71,6 +72,7 @@ class RT(Node):
         """
         Send periodic heartbeat messages to the SBAPI to indicate the RT is alive.
         """
+        await asyncio.sleep(self.heartbeat_secs * random())  # Avoids thundering herd
         while True:
             async with fix_execution_time(self.heartbeat_secs, f"RT {self.address.tag}", logging):
                 logging.debug(f"RT {self.address.tag}: {self.heartbeat_secs}s heartbeat")
@@ -83,8 +85,8 @@ class RT(Node):
                         await client.post(
                             f"{settings.SBAPI_URL}/api/v1/{self.auid}/heartbeat", json={}, headers=candidate_headers
                         )
-                except Exception:
-                    logging.warning(f"RT {self.address.tag}: Heartbeat connection failed")
+                except Exception as e:
+                    logging.warning(f"RT {self.address.tag}: Heartbeat connection failed: {e}")
 
     async def start_heartbeat_req(self):
         """
@@ -137,6 +139,7 @@ class RT(Node):
                     height_asl_m=21,
                     notes="NONE",
                     network_details={"rt_wwan_1_ipv6_address": None},
+                    # network_details={"rt_wwan_1_ipv6_address": self.address.ipv6_address},
                 )
 
                 res = await client.post(

@@ -8,10 +8,12 @@ deserialization of heterogeneous message types.
 The key feature is the Message class, which uses the 'msg_type' field as a discriminator to automatically decode
 incoming JSON into the correct message type (APConnectInd, APRegisterReq, or APRegisterInd).
 """
+
+import ipaddress
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
-
 import logging
 from datetime import UTC, datetime
 from enum import StrEnum, auto
@@ -20,6 +22,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, PrivateAttr, RootModel, model_validator
 
 from src.config import settings
+from src.worker.utils import get_ipv6_prefix
 
 #######################################################################################################################
 # Globals
@@ -63,6 +66,7 @@ class Address(BaseModel):
 
     _tag: str = PrivateAttr()
     _hash: int = PrivateAttr()
+    _ipv6_address: str = PrivateAttr()
 
     model_config = {"frozen": True}
 
@@ -90,6 +94,7 @@ class Address(BaseModel):
         tag += f"R{self.rt:02x}" if self.rt is not None else ""
         object.__setattr__(self, "_tag", tag)
         object.__setattr__(self, "_hash", hash(tag))
+
         return self
 
     @property
@@ -101,6 +106,21 @@ class Address(BaseModel):
             str: The tag string.
         """
         return self._tag
+
+    @property
+    def ipv6_address(self) -> str:
+        """
+        A precomputed IPv6 address for this node based on its address components and the configured IPv6 prefix.
+        """
+        rt = "ffff" if self.rt is None else f"{self.rt:x}"
+        ap = "ffff" if self.ap is None else f"{self.ap:x}"
+        hub = "ffff" if self.hub is None else f"{self.hub:x}"
+        net = "ffff" if self.net is None else f"{self.net:x}"
+        prefix = get_ipv6_prefix()[0]
+
+        address = f"{prefix}:{net}:{hub}:{ap}:{rt}"
+        address = ipaddress.IPv6Address(address).compressed
+        return address
 
     def __hash__(self) -> int:
         return self._hash

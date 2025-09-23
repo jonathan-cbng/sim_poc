@@ -18,6 +18,7 @@ import asyncio
 # Imports
 #######################################################################################################################
 import logging
+from random import random
 
 import httpx
 import shortuuid
@@ -76,6 +77,7 @@ class AP(Node):
         """
         Send periodic heartbeat messages to the SBAPI to indicate the AP is alive.
         """
+        await asyncio.sleep(self.heartbeat_secs * random())  # Avoids thundering herd
         while True:
             async with fix_execution_time(self.heartbeat_secs, f"AP {self.address.tag}", logging):
                 logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")

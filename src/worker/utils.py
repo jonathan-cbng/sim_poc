@@ -7,8 +7,12 @@ Utility classes and functions for worker nodes (APs and RTs).
 
 import asyncio
 import contextlib
+import functools
+import ipaddress
 import random
 import time
+
+import netifaces
 
 #######################################################################################################################
 # Globals
@@ -56,6 +60,31 @@ async def fix_execution_time(duration, tag="", logger=None):
             await asyncio.sleep(0)
         else:
             await asyncio.sleep(duration - elapsed)
+
+
+@functools.lru_cache(maxsize=1)
+def get_ipv6_prefix():
+    """
+    Get the first global IPv6 address and return its network prefix as a string (no trailing colons,
+    no '::'), using the actual prefix length, or a default link-local prefix if none found.
+
+    Caches the result for efficiency.
+    """
+
+    for iface in netifaces.interfaces():
+        addrs = netifaces.ifaddresses(iface).get(netifaces.AF_INET6, [])
+        for addr in addrs:
+            ip = addr["addr"].split("%")[0]  # Remove zone index if present
+            ip_obj = ipaddress.IPv6Address(ip)
+            # Skip loopback and unspecified
+            if ip_obj.is_loopback or ip_obj.is_unspecified:
+                continue
+            if ip_obj.is_global:
+                len = addr["netmask"].split("/")[1]
+                network = ipaddress.IPv6Network(f"{ip}/{len}", strict=False)
+                return (str(network.network_address).rstrip(":"), network.prefixlen)
+
+    return ("fe80", 64)  # Default to link-local
 
 
 #######################################################################################################################
