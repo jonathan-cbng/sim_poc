@@ -29,6 +29,17 @@ class Result(BaseModel):
     message: str
 
 
+class RTCreateRequest(BaseModel):
+    """
+    Request model for creating an AP.
+
+    Args:
+        heartbeat_seconds (int): Heartbeat interval in seconds.
+    """
+
+    heartbeat_seconds: int = Field(settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds")
+
+
 class APCreateRequest(BaseModel):
     """
     Request model for creating an AP.

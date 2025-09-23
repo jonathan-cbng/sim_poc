@@ -20,7 +20,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.config import settings
 from src.controller.comms import worker_ctrl
-from src.controller.ctrl_api import APCreateRequest, HubCreateRequest
+from src.controller.ctrl_api import APCreateRequest, HubCreateRequest, RTCreateRequest
 from src.nms_api import NmsAuthInfo, NmsHubCreateRequest
 from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
 
@@ -192,6 +192,30 @@ class APManager(ParentNode):
     def model_post_init(self, __context):
         self._registered_event = asyncio.Event()
 
+    async def add_rt(self, req: RTCreateRequest, rt_idx: int = -1) -> RTManager:
+        """
+        Create & start an AP (optionally with initial RTs).
+
+        Args:
+            req (APCreateRequest): AP creation request.
+            ap_idx (int): AP index, or -1 for auto-assignment.
+
+        Returns:
+            APManager: The created AP object.
+
+        Raises:
+            HTTPException: If the specified index already exists.
+        """
+        rt_idx = self.get_index(rt_idx)
+
+        rt_address = Address(net=self.address.net, hub=self.address.hub, ap=self.address.ap, rt=rt_idx)
+        self.children[rt_idx] = rt = RTManager(
+            address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=self.auid
+        )
+        await rt.register()
+        logging.info(f"Created RT {self.address}")
+        return rt
+
     def get_rt(self, index: int) -> RTManager:
         """
         Get an RTManager by index.
@@ -282,12 +306,9 @@ class HubManager(ParentNode):
         self.children[ap_idx] = new_ap
         await new_ap.register()
 
+        req_params = RTCreateRequest(heartbeat_seconds=req.rt_heartbeat_seconds)
         for i in range(req.num_rts):
-            rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            new_ap.children[i] = rt = RTManager(
-                address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=new_ap.auid
-            )
-            await rt.register()
+            await new_ap.add_rt(req_params, i)
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
         return new_ap
 
