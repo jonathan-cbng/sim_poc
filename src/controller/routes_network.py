@@ -11,10 +11,8 @@ from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Path
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.controller.ctrl_api import NetworkCreateRequest, Result
-from src.controller.managers import NetworkManager
+from src.controller.ctrl_api import NetworkCreateRequest, NetworkRead, Result
 from src.controller.worker_ctrl import simulator
-from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals
@@ -29,7 +27,7 @@ network_router = APIRouter(prefix="/network", tags=["Network Management"])
 @network_router.post("/", status_code=HTTP_201_CREATED)
 async def create_network(
     req: Annotated[NetworkCreateRequest, Body(description="Network creation request")],
-) -> Address:
+) -> NetworkRead:
     """
     Create and start a Network (optionally with initial Hubs).
 
@@ -41,11 +39,11 @@ async def create_network(
     """
     net_mgr = await simulator.add_network(req)
     logging.info(f"Created Network {net_mgr.address}")
-    return net_mgr.address
+    return net_mgr
 
 
 @network_router.get("/")
-async def list_networks() -> dict[int, NetworkManager]:
+async def list_networks() -> dict[int, NetworkRead]:
     """
     List all Networks.
 
@@ -53,11 +51,12 @@ async def list_networks() -> dict[int, NetworkManager]:
         dict[int, NetworkManager]: Dictionary of NetworkManagers keyed by Network ID.
     """
     logging.info(f"Listing all {len(simulator.children)} Networks")
+    # result = {idx: NetworkRead.model_validate(net) for idx, net in simulator.children.items()}
     return simulator.children
 
 
 @network_router.get("/{idx}")
-async def get_network(idx: Annotated[int, Path(description="Network index")]) -> NetworkManager:
+async def get_network(idx: Annotated[int, Path(description="Network index")]) -> NetworkRead:
     """
     Get status for a single Network.
 

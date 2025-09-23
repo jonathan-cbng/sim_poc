@@ -2,12 +2,15 @@
 API request/response models for controller endpoints.
 """
 
+from enum import StrEnum, auto
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
 from pydantic import BaseModel, Field
 
 from src.config import settings
+from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals
@@ -102,6 +105,61 @@ class NetworkCreateRequest(BaseModel):
     rt_heartbeat_seconds: int = Field(
         settings.DEFAULT_HEARTBEAT_SECONDS, description="Heartbeat interval in seconds for child RTs"
     )
+
+
+class RTState(StrEnum):
+    """
+    Enum for RT registration state.
+    """
+
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+    REGISTRATION_FAILED = auto()
+
+
+class APState(StrEnum):
+    """
+    Enum for AP registration state.
+    """
+
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+    REGISTRATION_FAILED = auto()
+
+
+class HubState(StrEnum):
+    """
+    Enum for Hub registration state.
+    """
+
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+
+
+class NetworkState(StrEnum):
+    """
+    Enum for Network registration state.
+    """
+
+    UNREGISTERED = auto()
+    REGISTERED = auto()
+
+
+class NetworkRead(BaseModel):
+    """
+    Response model for reading a Network.
+
+    Args:
+        index (int): Network index.
+        csi (str): CSI (customer ID).
+        csni (str): CSNI (network identifier).
+        state (str): Current state of the network.
+    """
+
+    address: Address = Field(..., description="Network address")
+    csi: str = Field(..., description="CSI (customer ID)")
+    csni: str = Field(..., description="CSNI (network identifier)")
+    state: NetworkState = Field(..., description="Current state of the network")
 
 
 #######################################################################################################################

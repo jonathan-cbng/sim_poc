@@ -15,8 +15,8 @@ from starlette import status
 
 from src.config import settings
 from src.controller.comms import ControllerComms
-from src.controller.ctrl_api import HubCreateRequest, NetworkCreateRequest
-from src.controller.managers import APManager, HubManager, NetworkManager, NetworkState, ParentNode, RTManager
+from src.controller.ctrl_api import HubCreateRequest, NetworkCreateRequest, NetworkState
+from src.controller.managers import APManager, HubManager, NetworkManager, ParentNode, RTManager
 from src.nms_api import NmsAuthInfo, NmsNetworkCreateRequest
 from src.worker.worker_api import Address, MessageTypes
 

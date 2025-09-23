@@ -9,7 +9,6 @@ import asyncio
 import contextlib
 import logging
 import subprocess
-from enum import StrEnum, auto
 from typing import Any
 
 import httpx
@@ -20,7 +19,15 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.config import settings
 from src.controller.comms import worker_ctrl
-from src.controller.ctrl_api import APCreateRequest, HubCreateRequest, RTCreateRequest
+from src.controller.ctrl_api import (
+    APCreateRequest,
+    APState,
+    HubCreateRequest,
+    HubState,
+    NetworkState,
+    RTCreateRequest,
+    RTState,
+)
 from src.nms_api import NmsAuthInfo, NmsHubCreateRequest
 from src.worker.worker_api import Address, APRegisterReq, APRegisterRsp, HubConnectInd, RTRegisterReq
 
@@ -96,22 +103,12 @@ class ParentNode(BaseModel):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
 
 
-class RTState(StrEnum):
-    """
-    Enum for RT registration state.
-    """
-
-    UNREGISTERED = auto()
-    REGISTERED = auto()
-    REGISTRATION_FAILED = auto()
-
-
 class RTManager(BaseModel):
     """
     Manager for RT nodes.
 
     Args:
-        state (RTState): Registration state.
+        state (src.controller.ctrl_api.RTState): Registration state.
         heartbeat_seconds (int): Heartbeat interval.
     """
 
@@ -161,22 +158,12 @@ class RTManager(BaseModel):
         self._registered_event.set()
 
 
-class APState(StrEnum):
-    """
-    Enum for AP registration state.
-    """
-
-    UNREGISTERED = auto()
-    REGISTERED = auto()
-    REGISTRATION_FAILED = auto()
-
-
 class APManager(ParentNode):
     """
     Manager for AP nodes.
 
     Args:
-        state (APState): Registration state.
+        state (src.controller.ctrl_api.APState): Registration state.
         heartbeat_seconds (int): Heartbeat interval.
         hub_auid (str): AUID of parent Hub.
     """
@@ -259,15 +246,6 @@ class APManager(ParentNode):
         worker_ctrl.send(ap_req)
 
         await self._registered_event.wait()
-
-
-class HubState(StrEnum):
-    """
-    Enum for Hub registration state.
-    """
-
-    UNREGISTERED = auto()
-    REGISTERED = auto()
 
 
 class HubManager(ParentNode):
@@ -382,15 +360,6 @@ class HubManager(ParentNode):
             self.stop_worker()
 
 
-class NetworkState(StrEnum):
-    """
-    Enum for Network registration state.
-    """
-
-    UNREGISTERED = auto()
-    REGISTERED = auto()
-
-
 class NetworkManager(ParentNode):
     """
     Manager for Network nodes.
@@ -398,7 +367,7 @@ class NetworkManager(ParentNode):
     Args:
         csi (str): Customer ID.
         csni (str): CSNI assigned by northbound API.
-        state (NetworkState): Registration state.
+        state (src.controller.ctrl_api.NetworkState): Registration state.
         children (dict[int, HubManager]): Hub managers.
     """
 
