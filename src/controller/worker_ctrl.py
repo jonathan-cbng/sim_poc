@@ -139,7 +139,9 @@ class SimulatorManager(ParentNode):
                     case MessageTypes.HUB_CONNECT_IND:
                         node.on_connect_ind(msg)
                     case MessageTypes.AP_REGISTER_RSP:
-                        node.on_register_rsp(msg)
+                        node.on_ap_register_rsp(msg)
+                    case MessageTypes.RT_REGISTER_RSP:
+                        node.on_rt_register_rsp(msg)
                     case _:
                         logging.warning(f"Unknown event type: {msg.msg_type}")
 

@@ -103,6 +103,7 @@ class RTState(StrEnum):
 
     UNREGISTERED = auto()
     REGISTERED = auto()
+    REGISTRATION_FAILED = auto()
 
 
 class RTManager(BaseModel):
@@ -143,6 +144,21 @@ class RTManager(BaseModel):
         worker_ctrl.send(register_req)
 
         await self._registered_event.wait()
+
+    def on_rt_register_rsp(self, msg: APRegisterRsp):
+        """
+        Handle APRegisterRsp message from worker.
+
+        Args:
+            msg (APRegisterRsp): The AP registration response message.
+        """
+        self.state = RTState.REGISTERED if msg.success else RTState.REGISTRATION_FAILED
+        if msg.success:
+            logging.info(f"RT {self.address.tag} registered successfully.")
+        else:
+            logging.error(f"RT {self.address.tag} registration failed.")
+
+        self._registered_event.set()
 
 
 class APState(StrEnum):
@@ -188,7 +204,7 @@ class APManager(ParentNode):
         """
         return self.get_child_or_404(index)
 
-    def on_register_rsp(self, msg: APRegisterRsp):
+    def on_ap_register_rsp(self, msg: APRegisterRsp):
         """
         Handle APRegisterRsp message from worker.
 
@@ -266,12 +282,12 @@ class HubManager(ParentNode):
         self.children[ap_idx] = new_ap
         await new_ap.register()
 
-        rts = {}
         for i in range(req.num_rts):
             rt_address = Address(net=self.address.net, hub=self.address.hub, ap=ap_idx, rt=i)
-            rts[i] = rt = RTManager(address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=new_ap.auid)
+            new_ap.children[i] = rt = RTManager(
+                address=rt_address, heartbeat_seconds=req.heartbeat_seconds, ap_auid=new_ap.auid
+            )
             await rt.register()
-        new_ap.children = rts
         logging.info(f"Created AP {ap_idx} with {req.num_rts} RTs")
         return new_ap
 
