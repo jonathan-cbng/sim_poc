@@ -186,57 +186,71 @@ make cppcheck
 ## Directory Layout
 
 ```
-├── Dockerfile                  # Container build for the main simulator
-├── docs                        # Documentation and architecture diagrams
-│   ├── ap_registration.puml    # PlantUML for AP registration flow
-│   ├── ap_registration.svg     # SVG diagram for AP registration
-│   ├── architecture.puml       # PlantUML for system architecture
-│   ├── architecture.svg        # SVG diagram for system architecture
-│   ├── hub_registration.puml   # PlantUML for Hub registration flow
-│   ├── hub_registration.svg    # SVG diagram for Hub registration
-│   ├── requirements.md         # Project requirements and notes
-│   ├── rt_registration.puml    # PlantUML for RT registration flow
-│   └── rt_registration.svg     # SVG diagram for RT registration
-├── experimental                # Experimental sub-projects and demos
-│   ├── multi-ip                # Large-scale IPv6 AP/RT simulation demo
-│   │   ├── check_ipv6_which_ip.py # Check IPv6 address assignment
-│   │   ├── docker-compose.yaml     # Compose file for multi-container sim
-│   │   ├── Dockerfile              # Container for multi-ip demo
-│   │   ├── entrypoint.sh           # Entrypoint script for containers
-│   │   ├── gen_compose.py          # Generate docker-compose for scale
-│   │   ├── main.py                 # Main FastAPI server for demo
-│   │   ├── README.md               # Docs for multi-ip experiment
-│   │   └── requirements.txt        # Python deps for multi-ip demo
-│   └── zmq                     # ZeroMQ communication demo
-│       ├── zmq_client.py           # Minimal ZeroMQ client
-│       └── zmq_server.py           # Minimal ZeroMQ server
-├── main.py                     # Entrypoint for the simulator
-├── nodes                       # C++/Python node simulation code
-│   ├── cmake-build-debug           # CMake build artifacts
-│   ├── CMakeLists.txt              # CMake build config
-│   ├── cpp_src                     # C++ source for AP/RT/node
-│   │   ├── ap.cpp, ap.hpp, ...     # AP, RT, node C++ code
-│   ├── MANIFEST.in                 # Python packaging manifest
-│   ├── nodes                       # Python bindings for nodes
-│   ├── pyproject.toml              # Python build config for nodes
-│   ├── README.md                   # Docs for nodes module
-│   └── requirements-dev.txt        # Dev dependencies for nodes
-├── pyproject.toml               # Python build config (main)
-├── README.md                    # Project overview and docs
-├── requirements-dev.txt         # Dev dependencies (main)
-├── requirements.txt             # Runtime dependencies (main)
-├── src                          # Main Python source code
-│   ├── api_nms.py                   # NMS API integration
-│   ├── config.py                     # Config loading/utilities
-│   ├── controller                    # Control plane logic
-│   │   ├── api.py, app.py, ...       # FastAPI app, routes, managers
-│   ├── worker                        # Worker process logic
-│   │   ├── api.py, worker.py         # Worker API and main loop
-├── tests                        # Unit and integration tests
-│   ├── conftest.py, test_*.py       # Test modules
-└── utils                        # Utility scripts
-    ├── ap_demo.py                   # AP simulation demo script
-    └── async_create_nodes 1.py      # Node creation utility
+├── CMakeLists.txt                  # CMake build config (root)
+├── Dockerfile                      # Container build for the main simulator
+├── node_sim.py                     # Main simulator script
+├── pyproject.toml                  # Python build config (main)
+├── README.md                       # Project overview and docs
+├── requirements-dev.txt            # Dev dependencies (main)
+├── requirements.txt                # Runtime dependencies (main)
+├── accel/                          # C++/Python acceleration module
+│   ├── CMakeLists.txt                  # CMake build config for accel
+│   ├── README.md                       # Docs for accel module
+│   ├── requirements-dev.txt            # Dev dependencies for accel
+│   ├── build/                          # CMake build artifacts
+│   ├── cmake-build-debug/              # Debug build artifacts
+│   ├── src/                            # C++ source for AP/RT/node
+│   │   ├── ap.cpp, ap.hpp, ...         # AP, RT, node C++ code
+│   │   ├── node_sim_bindings.cpp       # Python bindings for nodes
+│   │   └── accel.cpython-311-x86_64-linux-gnu.so # Compiled Python extension module for acceleration (generated)
+├── docs/                           # Documentation and architecture diagrams
+│   ├── *.puml, *.svg                   # PlantUML and SVG diagrams
+│   ├── requirements.md                 # Project requirements and notes
+├── experimental/                   # Experimental sub-projects and demos
+│   ├── multi-ip/                   # Large-scale IPv6 AP/RT simulation demo
+│   │   ├── check_ipv6_which_ip.py      # Check IPv6 address assignment
+│   │   ├── docker-compose.yaml         # Compose file for multi-container sim
+│   │   ├── Dockerfile                  # Container for multi-ip demo
+│   │   ├── entrypoint.sh               # Entrypoint script for containers
+│   │   ├── gen_compose.py              # Generate docker-compose for scale
+│   │   ├── main.py                     # Main FastAPI server for demo
+│   │   ├── README.md                   # Docs for multi-ip experiment
+│   │   └── requirements.txt            # Python deps for multi-ip demo
+│   └── zmq/                        # ZeroMQ communication demo
+│       ├── zmq_client.py               # Minimal ZeroMQ client
+│       └── zmq_server.py               # Minimal ZeroMQ server
+├── src/                            # Main Python source code
+│   ├── __init__.py                     # Marks src as a package
+│   ├── config.py                       # Config loading/utilities
+│   ├── nms_api.py                      # NMS API integration
+│   ├── controller/                     # Control plane logic
+│   │   ├── __init__.py                 # Marks controller as a package
+│   │   ├── app.py                      # Main FastAPI application setup and lifecycle management
+│   │   ├── comms.py                    # Manages ZeroMQ communication between controller and workers
+│   │   ├── ctrl_api.py                 # API request/response models for controller endpoints
+│   │   ├── managers.py                 # Controller-side node and manager classes
+│   │   ├── routes_ap.py                # API routes for Access Point (AP) management
+│   │   ├── routes_hub.py               # API routes for Hub management
+│   │   ├── routes_network.py           # API routes for Network management
+│   │   └── worker_ctrl.py              # Manages communication with worker processes via ZeroMQ
+│   ├── worker/                         # Worker process logic
+│   │   ├── __init__.py                 # Marks worker as a package
+│   │   ├── ap.py                       # Defines the Access Point (AP) class and registration logic
+│   │   ├── comms.py                    # Manages ZeroMQ communication between worker and controller
+│   │   ├── node.py                     # Base class for all network nodes (APs and RTs)
+│   │   ├── rt.py                       # Defines the Remote Terminal (RT) class and state/communication logic
+│   │   ├── utils.py                    # Utility functions and helpers for worker nodes
+│   │   ├── worker.py                   # Main worker process managing APs, RTs, and controller communication
+│   │   └── worker_api.py               # Data models for messages and addresses exchanged with the controller
+├── templates/                      # Template files
+│   └── template.py
+├── tests/                          # Unit and integration tests
+│   ├── conftest.py, test_*.py          # Test modules
+├── utils/                          # Utility scripts
+│   ├── allocate_ipv6.sh
+│   ├── async_create_nodes 1.py
+│   ├── ipv6_prefix.py
+│   └── plantuml.jar
 ```
 
 ## Quick Start (Local Dev)
