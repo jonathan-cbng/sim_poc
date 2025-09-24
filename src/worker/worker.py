@@ -32,6 +32,7 @@ from src.worker.ap import AP
 from src.worker.comms import WorkerComms
 from src.worker.node import Node, nodes
 from src.worker.rt import RT
+from src.worker.utils import fix_execution_time
 from src.worker.worker_api import Address, APRegisterReq, HubConnectInd, Message, MessageTypes, RTRegisterReq
 
 #######################################################################################################################
@@ -42,13 +43,13 @@ logging.basicConfig(
     level=logging.getLevelName(settings.LOG_LEVEL),
     format="%(levelname)s: %(asctime)s %(filename)s:%(lineno)d - %(message)s",
 )
-
+logging.getLogger("httpx").setLevel(logging.WARNING)  # Suppress httpx debug amd info logs
 #######################################################################################################################
 # Body
 #######################################################################################################################
 
 
-class Worker(Node):
+class Hub(Node):
     """Top level worker class that simulates a network hub.
 
     An arbitrary number of APs and RTs can be created within the hub, but for practical
@@ -110,7 +111,7 @@ class Worker(Node):
         """
         cmd = command.root
         logging.debug(f"Rx ctrl->{self.address.tag}: {cmd!r}")
-        obj: Worker | RT | AP = nodes.get(cmd.address, self)
+        obj: Hub | RT | AP = nodes.get(cmd.address, self)
         result = None
         match cmd.msg_type:
             case MessageTypes.AP_REGISTER_REQ:
@@ -127,9 +128,18 @@ class Worker(Node):
         if result is not None:
             await self.comms.send_msg(result)
 
+    async def reporter_loop(self):
+        """Periodically report the status of the hub and its APs/RTs to the controller."""
+        while True:
+            async with fix_execution_time(settings.REPORTER_INTERVAL):
+                # Implement reporting logic here if needed
+                logging.info(f"Hub {self.address.tag} Heartbeat summary: {self.heartbeat_state.children}")
+
     async def downlink_loop(self, max_concurrent: int = settings.MAX_CONCURRENT_WORKER_COMMANDS) -> None:
         """Main loop: wait for messages from controller and process them concurrently, limiting in-flight commands."""
+        asyncio.create_task(self.reporter_loop())
         await self.comms.send_msg(HubConnectInd(address=self.address))
+
         logging.debug(f"{self.address.tag} starting read loop")
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = set()
@@ -167,7 +177,7 @@ def main() -> None:
     args = parser.parse_args()
     address = Address(net=args.network_idx, hub=args.hub_idx)
     comms = WorkerComms(address, args.pull_addr, args.pub_addr)
-    worker = Worker(address, comms)
+    worker = Hub(address, comms)
     try:
         asyncio.run(worker.downlink_loop())
     except KeyboardInterrupt:

@@ -11,10 +11,11 @@ Usage:
     Used internally by the worker process to manage node lifecycle and lookup.
 """
 
+import asyncio
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
-
 from typing import Any
 
 from src.worker.comms import WorkerComms
@@ -55,6 +56,8 @@ class Node:
         self.address = address
         self.http_client = http_client
         self.heartbeat_state = HeartbeatStatsRsp(address=self.address)
+        self.registered = False
+        self.heartbeat_task = None
         nodes[self.address] = self
 
     def __del__(self):
@@ -98,6 +101,19 @@ class Node:
         if req.reset:
             self.heartbeat_state = HeartbeatStatsRsp(address=self.address)
         return result
+
+    async def heartbeat(self):
+        """
+        Send periodic heartbeat messages to the SBAPI to indicate the node is alive.
+        """
+        raise NotImplementedError("Subclasses must implement heartbeat method")
+
+    async def on_start_heartbeat_req(self):
+        """
+        Start the heartbeat task for the AP. - only if registered.
+        """
+        if self.registered and (self.heartbeat_task is None or self.heartbeat_task.done()):
+            self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
 
 #######################################################################################################################

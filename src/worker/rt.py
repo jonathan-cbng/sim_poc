@@ -63,6 +63,7 @@ class RT(Node):
         self.heartbeat_secs = None
         self.auid = None
         self.heartbeat_task = None
+        self.registered = False
 
     async def heartbeat(self):
         """
@@ -83,13 +84,6 @@ class RT(Node):
                 except Exception as e:
                     self.record_hb(False)
                     logging.warning(f"RT {self.address.tag}: Heartbeat failed: {e}")
-
-    async def on_start_heartbeat_req(self):
-        """
-        Start the heartbeat task for the AP.
-        """
-        if self.heartbeat_task is None or self.heartbeat_task.done():
-            self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
     async def on_rt_register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """
@@ -128,7 +122,7 @@ class RT(Node):
                 height_mast_m=20,
                 height_asl_m=21,
                 notes="NONE",
-                #                    network_details={"rt_wwan_1_ipv6_address": None},
+                # network_details={"rt_wwan_1_ipv6_address": None},
                 network_details={"rt_wwan_1_ipv6_address": self.address.ipv6_address},
             )
             res = await self.http_client.post(
@@ -155,6 +149,7 @@ class RT(Node):
             res.raise_for_status()
 
             logging.info(f"{self.address.tag}: RT registration successful (AUID: {self.auid})")
+            self.registered = True
             response = RTRegisterRsp(success=True, address=self.address)
 
         except Exception as e:

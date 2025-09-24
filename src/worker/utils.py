@@ -56,8 +56,8 @@ async def fix_execution_time(duration, tag="", logger=None):
         elapsed = time.monotonic() - start
         if elapsed > duration:
             if logger:
-                logger.warning(f"{tag}: Heartbeat loop missed deadline by {elapsed - duration:.2f}s")
-            await asyncio.sleep(0)
+                logger.warning(f"{tag}: Heartbeat loop missed deadline by {elapsed - duration:.2f}s. Resetting timer.")
+            await asyncio.sleep(duration)
         else:
             await asyncio.sleep(duration - elapsed)
 

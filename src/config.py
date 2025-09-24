@@ -60,9 +60,11 @@ class Settings(BaseSettings):
     )
     VERIFY_SSL_CERT: bool = Field(False, description="Whether to verify SSL certificates")
 
-    HTTPX_TIMEOUT: int = Field(3, description="Timeout for HTTPX requests in seconds")
+    HTTPX_TIMEOUT: int = Field(5, description="Timeout for HTTPX requests in seconds")
 
     MAX_CONCURRENT_WORKER_COMMANDS: int = Field(16, description="Maximum concurrent requests a worker can handle")
+
+    REPORTER_INTERVAL: int = Field(10, description="Interval in seconds for reporting worker status")
 
 
 settings = Settings()  # Load settings from environment variables or .env file if present'

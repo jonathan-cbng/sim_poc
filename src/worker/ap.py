@@ -92,13 +92,6 @@ class AP(Node):
                     logging.warning(f"AP {self.address.tag}: Heartbeat failed")
                     self.record_hb(False)
 
-    async def on_start_heartbeat_req(self):
-        """
-        Start the heartbeat task for the AP.
-        """
-        if self.heartbeat_task is None or self.heartbeat_task.done():
-            self.heartbeat_task = asyncio.create_task(self.heartbeat())
-
     async def on_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
         Handle an AP registration request.
