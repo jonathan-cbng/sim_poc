@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     VERIFY_SSL_CERT: bool = Field(False, description="Whether to verify SSL certificates")
 
     HTTPX_TIMEOUT: int = Field(10, description="Timeout for HTTPX requests in seconds")
+    WORKER_HTTPX_POOLSIZE: int = Field(256, description="Connection pool size for HTTPX")
 
     MAX_CONCURRENT_WORKER_COMMANDS: int = Field(16, description="Maximum concurrent requests a worker can handle")
 

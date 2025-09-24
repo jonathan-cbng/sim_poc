@@ -39,8 +39,6 @@ from src.worker.worker_api import APRegisterReq, APRegisterRsp
 #######################################################################################################################
 # Globals
 #######################################################################################################################
-
-#######################################################################################################################
 # Body
 #######################################################################################################################
 
@@ -88,8 +86,8 @@ class AP(Node):
                     )
                     res.raise_for_status()
                     self.record_hb(True)
-                except Exception as e:
-                    logging.warning(f"AP {self.address.tag}: Heartbeat failed: {e}")
+                except Exception:
+                    logging.warning(f"AP {self.address.tag}: Heartbeat failed", exc_info=True)
                     self.record_hb(False)
 
     async def on_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
@@ -163,8 +161,8 @@ class AP(Node):
             response = APRegisterRsp(success=True, address=self.address)
             logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
 
-        except Exception as e:
-            logging.error(f"Exception during AP registration: {e}")
+        except Exception:
+            logging.error("Exception during AP registration", exc_info=True)
             response = APRegisterRsp(success=False, address=self.address)
 
         return response

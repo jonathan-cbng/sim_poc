@@ -68,7 +68,12 @@ class Hub(Node):
             comms (WorkerComms): Communication link to the controller.
         """
         http_client = httpx.AsyncClient(
-            timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+            timeout=settings.HTTPX_TIMEOUT,
+            verify=settings.VERIFY_SSL_CERT,
+            follow_redirects=True,
+            limits=httpx.Limits(
+                max_connections=settings.WORKER_HTTPX_POOLSIZE, max_keepalive_connections=settings.WORKER_HTTPX_POOLSIZE
+            ),
         )
         super().__init__(address, comms, http_client)
         self.auid = str(shortuuid.uuid())
@@ -148,8 +153,8 @@ class Hub(Node):
             async with semaphore:
                 try:
                     await self.execute_command(command)
-                except Exception as e:
-                    logging.error(f"[AP Worker {self.address.tag}] Error processing command: {e}")
+                except Exception:
+                    logging.error(f"[AP Worker {self.address.tag}] Error processing command", exc_info=True)
 
         while True:
             try:
@@ -158,8 +163,8 @@ class Hub(Node):
                     task = asyncio.create_task(handle_command(command))
                     tasks.add(task)
                     task.add_done_callback(tasks.discard)
-            except Exception as e:
-                logging.error(f"[AP Worker {self.address.tag}] Error receiving command: {e}")
+            except Exception:
+                logging.error(f"[Hub Worker {self.address.tag}] Error receiving command", exc_info=True)
                 await asyncio.sleep(1)
 
     async def close(self):

@@ -81,9 +81,9 @@ class RT(Node):
                     )
                     res.raise_for_status()
                     self.record_hb(True)
-                except Exception as e:
+                except Exception:
                     self.record_hb(False)
-                    logging.warning(f"RT {self.address.tag}: Heartbeat failed: {e}")
+                    logging.warning(f"RT {self.address.tag}: Heartbeat failed", exc_info=True)
 
     async def on_rt_register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """
@@ -152,8 +152,8 @@ class RT(Node):
             self.registered = True
             response = RTRegisterRsp(success=True, address=self.address)
 
-        except Exception as e:
-            logging.warning(f"RT {self.address.tag}: Registration failed: {e}")
+        except Exception:
+            logging.warning(f"RT {self.address.tag}: Registration failed", exc_info=True)
             response = RTRegisterRsp(success=False, address=self.address)
 
         return response
