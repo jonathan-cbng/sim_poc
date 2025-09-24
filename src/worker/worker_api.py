@@ -46,6 +46,9 @@ class MessageTypes(StrEnum):
     RT_REGISTER_REQ = auto()
     RT_REGISTER_RSP = auto()
     START_HEARTBEAT_REQ = auto()
+    HEARTBEAT_STATS_REQ = auto()
+    RT_HEARTBEAT_STATS_RSP = auto()
+    AP_HEARTBEAT_STATS_RSP = auto()
 
 
 class Address(BaseModel):
@@ -228,8 +231,64 @@ class StartHeartbeatReq(BaseMessageBody):
     msg_type: Literal[MessageTypes.START_HEARTBEAT_REQ] = MessageTypes.START_HEARTBEAT_REQ
 
 
+class HeartbeatStatsReq(BaseMessageBody):
+    """
+    Message requesting heartbeat statistics.
+
+    Attributes:
+        address (Address): The address of the node to get heartbeat stats for.
+        msg_type (Literal['heartbeat_stats_req']): Discriminator for this message type.
+    """
+
+    msg_type: Literal[MessageTypes.HEARTBEAT_STATS_REQ] = MessageTypes.HEARTBEAT_STATS_REQ
+    reset: bool = Field(default=False, description="Reset stats after reporting")
+
+
+class RTHeartbeatStatsRsp(BaseMessageBody):
+    """
+    Message containing heartbeat statistics.
+
+    Attributes:
+        msg_type (Literal['heartbeat_stats']): Discriminator for this message type.
+        total (int): Total number of heartbeats sent.
+        success (int): Number of successful heartbeats.
+    """
+
+    msg_type: Literal[MessageTypes.RT_HEARTBEAT_STATS_RSP] = MessageTypes.RT_HEARTBEAT_STATS_RSP
+    total: int = Field(default=0, description="Total number of heartbeats sent")
+    success: int = Field(default=0, description="Number of successful heartbeats")
+
+
+class APHeartbeatStatsRsp(BaseMessageBody):
+    """
+    Message containing heartbeat statistics.
+
+    Attributes:
+        msg_type (Literal['heartbeat_stats']): Discriminator for this message type.
+        total (int): Total number of heartbeats sent.
+        success (int): Number of successful heartbeats.
+    """
+
+    msg_type: Literal[MessageTypes.AP_HEARTBEAT_STATS_RSP] = MessageTypes.AP_HEARTBEAT_STATS_RSP
+    total: int = Field(default=0, description="Total number of heartbeats sent")
+    success: int = Field(default=0, description="Number of successful heartbeats")
+
+    child_total: int = Field(default=0, description="RT children total number of heartbeats sent")
+    child_success: int = Field(default=0, description="RT children number of successful heartbeats")
+
+
 class Message(
-    RootModel[HubConnectInd | APRegisterReq | APRegisterRsp | RTRegisterReq | RTRegisterRsp | StartHeartbeatReq]
+    RootModel[
+        HubConnectInd
+        | APRegisterReq
+        | APRegisterRsp
+        | RTRegisterReq
+        | RTRegisterRsp
+        | StartHeartbeatReq
+        | HeartbeatStatsReq
+        | RTHeartbeatStatsRsp
+        | APHeartbeatStatsRsp
+    ]
 ):
     """
     Union wrapper for AP worker messages, using 'msg_type' as a discriminator.

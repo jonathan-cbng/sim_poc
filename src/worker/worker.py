@@ -80,7 +80,7 @@ class Worker:
             Message: The response message from the AP.
         """
         ap = AP(command.address, self.comms)
-        return await ap.register_req(command)
+        return await ap.on_register_req(command)
 
     async def rt_register_req(self, command: RTRegisterReq) -> Message | None:
         """Process an AP register request. We handle this at the worker level to create
@@ -92,8 +92,9 @@ class Worker:
         Returns:
             Message: The response message from the AP.
         """
+
         rt = RT(command.address, self.comms)
-        return await rt.register_req(command)
+        return await rt.on_rt_register_req(command)
 
     async def execute_command(self, command: Message) -> None:
         """Execute a command received from the controller.
@@ -113,7 +114,9 @@ class Worker:
             case MessageTypes.RT_REGISTER_REQ:
                 result = await obj.rt_register_req(cmd)
             case MessageTypes.START_HEARTBEAT_REQ:
-                result = await obj.start_heartbeat_req()
+                result = await obj.on_start_heartbeat_req()
+            case MessageTypes.HEARTBEAT_STATS_REQ:
+                result = obj.on_heartbeat_stats_req()
             case _:
                 logging.warning(f"[AP Worker {self.address.tag}] Unknown command event: {cmd.msg_type}")
 

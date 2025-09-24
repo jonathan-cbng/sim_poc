@@ -28,7 +28,7 @@ from src.worker.ap import AP
 from src.worker.comms import WorkerComms
 from src.worker.node import Node, nodes
 from src.worker.utils import fix_execution_time, zero_centred_rand
-from src.worker.worker_api import Address, RTRegisterReq, RTRegisterRsp
+from src.worker.worker_api import Address, HeartbeatStatsReq, RTHeartbeatStatsRsp, RTRegisterReq, RTRegisterRsp
 
 #######################################################################################################################
 # Globals
@@ -54,7 +54,7 @@ class RT(Node):
         comms (WorkerComms): Communication link to the controller.
     """
 
-    def __init__(self, address, comms: WorkerComms):
+    def __init__(self, address, parent: AP, comms: WorkerComms):
         """
         Initialize an RT instance.
 
@@ -63,10 +63,12 @@ class RT(Node):
             comms (WorkerComms): Communication link to the controller.
         """
         super().__init__(address, comms)
-        self.parent_auid = None
+        ap_address = Address(net=address.net, hub=address.hub, ap=address.ap)
+        self.parent: AP = nodes[ap_address]
         self.heartbeat_secs = None
         self.auid = None
         self.heartbeat_task = None
+        self.heartbeat_state = RTHeartbeatStatsRsp
 
     async def heartbeat(self):
         """
@@ -77,25 +79,30 @@ class RT(Node):
             async with fix_execution_time(self.heartbeat_secs, f"RT {self.address.tag}", logging):
                 logging.debug(f"RT {self.address.tag}: {self.heartbeat_secs}s heartbeat")
                 try:
+                    self.heartbeat_state.total += 1
+                    self.parent.heartbeat_state.child_total += 1
                     async with httpx.AsyncClient(
                         timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
                     ) as client:
                         rt_token = NmsAuthInfo.rt_jwt(self.auid)
                         candidate_headers = {"Authorization": f"Bearer {rt_token}"}
-                        await client.post(
+                        res = await client.post(
                             f"{settings.SBAPI_URL}/api/v1/{self.auid}/heartbeat", json={}, headers=candidate_headers
                         )
+                        res.raise_for_status()
+                        self.heartbeat_state.total += 1
+                        self.parent.heartbeat_state.child_total += 1
                 except Exception as e:
-                    logging.warning(f"RT {self.address.tag}: Heartbeat connection failed: {e}")
+                    logging.warning(f"RT {self.address.tag}: Heartbeat failed: {e}")
 
-    async def start_heartbeat_req(self):
+    async def on_start_heartbeat_req(self):
         """
         Start the heartbeat task for the AP.
         """
         if self.heartbeat_task is None or self.heartbeat_task.done():
             self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
-    async def register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
+    async def on_rt_register_req(self, command: RTRegisterReq) -> RTRegisterRsp | None:
         """
         Handle an AP registration request.
 
@@ -129,7 +136,7 @@ class RT(Node):
                     auid=temp_auid,
                     id=f"ID{self.auid}",
                     name=f"NAME{self.auid}",
-                    parent_auid=self.parent_auid,
+                    parent_auid=self.parent.auid,
                     node_priority="Gold",
                     node_status="Active",
                     address="NONE",
@@ -138,8 +145,8 @@ class RT(Node):
                     height_mast_m=20,
                     height_asl_m=21,
                     notes="NONE",
-                    network_details={"rt_wwan_1_ipv6_address": None},
-                    # network_details={"rt_wwan_1_ipv6_address": self.address.ipv6_address},
+                    #                    network_details={"rt_wwan_1_ipv6_address": None},
+                    network_details={"rt_wwan_1_ipv6_address": self.address.ipv6_address},
                 )
 
                 res = await client.post(
@@ -173,6 +180,19 @@ class RT(Node):
             response = RTRegisterRsp(success=False, address=self.address)
 
         return response
+
+    async def on_heartbeat_stats_req(self, req: HeartbeatStatsReq) -> RTHeartbeatStatsRsp:
+        """
+        Handle a request for the AP's heartbeat statistics.
+
+        Returns:
+            APHeartbeatStatsRsp: The current heartbeat statistics of the AP.
+        """
+
+        result = self.heartbeat_state
+        if req.reset:
+            self.heartbeat_state = RTHeartbeatStatsRsp()
+        return result
 
 
 #######################################################################################################################

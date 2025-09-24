@@ -34,7 +34,7 @@ from src.nms_api import (
 from src.worker.comms import WorkerComms
 from src.worker.node import Node
 from src.worker.utils import fix_execution_time
-from src.worker.worker_api import APRegisterReq, APRegisterRsp
+from src.worker.worker_api import APHeartbeatStatsRsp, APRegisterReq, APRegisterRsp, HeartbeatStatsReq
 
 #######################################################################################################################
 # Globals
@@ -65,13 +65,14 @@ class AP(Node):
             comms (WorkerComms): Communication link to the controller.
         """
         super().__init__(address, comms)
-        self.parent_auid = None
+        self.hub_auid = None
         self.heartbeat_secs = None
         self.auid = None
         self.azimuth_deg = None
         self.ap_secret = None
         self.lon_deg = self.lat_deg = None
         self.heartbeat_task = None
+        self.heartbeat_state = APHeartbeatStatsRsp()
 
     async def heartbeat(self):
         """
@@ -81,25 +82,28 @@ class AP(Node):
         while True:
             async with fix_execution_time(self.heartbeat_secs, f"AP {self.address.tag}", logging):
                 logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")
+                self.heartbeat_state.total += 1
                 try:
                     async with httpx.AsyncClient(
                         timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
                     ) as client:
                         secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
-                        await client.post(
+                        res = await client.post(
                             f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump()
                         )
+                        res.raise_for_status()
+                        self.heartbeat_state.heartbeat_success_count += 1
                 except Exception:
-                    logging.warning(f"AP {self.address.tag}: Heartbeat connection failed")
+                    logging.warning(f"AP {self.address.tag}: Heartbeat failed")
 
-    async def start_heartbeat_req(self):
+    async def on_start_heartbeat_req(self):
         """
         Start the heartbeat task for the AP.
         """
         if self.heartbeat_task is None or self.heartbeat_task.done():
             self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
-    async def register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
+    async def on_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
         """
         Handle an AP registration request.
 
@@ -119,7 +123,7 @@ class AP(Node):
         Returns:
             APRegisterRsp | None: The response message from the AP, or None if registration failed.
         """
-        self.parent_auid = command.hub_auid
+        self.hub_auid = command.hub_auid
         self.heartbeat_secs = command.heartbeat_seconds
         self.auid = command.auid
         self.azimuth_deg = command.azimuth_deg
@@ -136,7 +140,7 @@ class AP(Node):
                     auid=temp_auid,
                     id=f"ID_{self.auid}",
                     name=f"NAME_{self.auid}",
-                    parent_auid=self.parent_auid,
+                    parent_auid=self.hub_auid,
                     azimuth_deg=self.azimuth_deg,
                 )
 
@@ -179,6 +183,18 @@ class AP(Node):
             response = APRegisterRsp(success=False, address=self.address)
 
         return response
+
+    async def on_heartbeat_stats_req(self, req: HeartbeatStatsReq) -> APHeartbeatStatsRsp:
+        """
+        Handle a request for the AP's heartbeat statistics.
+
+        Returns:
+            APHeartbeatStatsRsp: The current heartbeat statistics of the AP.
+        """
+        result = self.heartbeat_state
+        if req.reset:
+            self.heartbeat_state = APHeartbeatStatsRsp()
+        return result
 
 
 #######################################################################################################################
