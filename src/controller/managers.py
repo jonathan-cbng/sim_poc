@@ -153,7 +153,7 @@ class RTManager(ParentNode):
         """
         self.state = RTState.REGISTERED if msg.success else RTState.REGISTRATION_FAILED
         if msg.success:
-            logging.info(f"RT {self.address.tag} registered successfully.")
+            logging.debug(f"RT {self.address.tag} registered successfully.")
         else:
             logging.error(f"RT {self.address.tag} registration failed.")
 
@@ -232,7 +232,7 @@ class APManager(ParentNode):
         """
         self.state = APState.REGISTERED if msg.success else APState.REGISTRATION_FAILED
         if msg.success:
-            logging.info(f"AP {self.address.tag} registered successfully.")
+            logging.debug(f"AP {self.address.tag} registered successfully.")
         else:
             logging.error(f"AP {self.address.tag} registration failed.")
 

@@ -88,8 +88,8 @@ class AP(Node):
                     )
                     res.raise_for_status()
                     self.record_hb(True)
-                except Exception:
-                    logging.warning(f"AP {self.address.tag}: Heartbeat failed")
+                except Exception as e:
+                    logging.warning(f"AP {self.address.tag}: Heartbeat failed: {e}")
                     self.record_hb(False)
 
     async def on_register_req(self, command: APRegisterReq) -> APRegisterRsp | None:
@@ -159,8 +159,9 @@ class AP(Node):
             )
             res.raise_for_status()
 
-            logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
+            self.registered = True
             response = APRegisterRsp(success=True, address=self.address)
+            logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
 
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
