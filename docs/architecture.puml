@@ -1,4 +1,4 @@
-@startuml C4_Elements
+@startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 Person(user, "User/Postman", "A user of the simulator")
@@ -10,7 +10,7 @@ System_Boundary(ctrl, "Control Layer") {
 }
 
 System_Boundary(sim_layer, "Execution Layer") {
-    System_Boundary(hub_sys,"HUB1 Simulator (python process)","Up to 32 APs, each with up to 64 RTs") {
+    Container_Boundary(hub_sys,"HUBn Simulator\nScaled for up to 4096 nodes") {
         Component(ap1, "AP1", "Python object", "Simulated AP")
         Component(ap1rt1, "AP1RT1", "Python object", "Simulated RT")
         Component(ap1rt2, "AP1RT2", "Python object", "Simulated RT")

@@ -122,16 +122,14 @@ sudo apt install -y build-essential cmake clang-tidy cppcheck pybind11-dev pytho
 - **clang-tidy**: Enforced globally by CMake during build (required)
 - **cppcheck**: Available as a custom target (optional, run manually)
 
-### 3. Build the C++ Extension
+### 3. Build the C++ Extension (and the documentation diagrams))
 
 From the project root:
 
 ```bash
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
-make install
+cmake -S . -B build
+cmake --build build
+cmake --install build
 ```
 
 or alternatively, using CMake's build command:
