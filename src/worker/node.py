@@ -18,7 +18,7 @@ Usage:
 from typing import Any
 
 from src.worker.comms import WorkerComms
-from src.worker.worker_api import Address
+from src.worker.worker_api import Address, HeartbeatStatsReq, HeartbeatStatsRsp
 
 #######################################################################################################################
 # Globals
@@ -42,7 +42,7 @@ class Node:
         comms (WorkerComms): Communication link to the controller.
     """
 
-    def __init__(self, address: Address, comms: WorkerComms):
+    def __init__(self, address: Address, comms: WorkerComms, http_client):
         """
         Initialize a Node instance and register it in the global nodes dictionary.
 
@@ -51,7 +51,10 @@ class Node:
             comms (WorkerComms): Communication link to the controller.
         """
         self.comms = comms
+        self.parent = nodes.get(address.parent, None)
         self.address = address
+        self.http_client = http_client
+        self.heartbeat_state = HeartbeatStatsRsp(address=self.address)
         nodes[self.address] = self
 
     def __del__(self):
@@ -60,6 +63,41 @@ class Node:
         """
         if self.address in nodes:
             del nodes[self.address]
+
+    def record_hb(self, success: bool):
+        """
+        Update the heartbeat statistics for the RT and its parent AP.
+
+        Args:
+            success (bool): Whether the heartbeat was successful.
+        """
+        self.heartbeat_state.local.record(success)
+        if self.parent:
+            self.parent.record_child_hb(success)
+
+    def record_child_hb(self, success: bool):
+        """
+        Update the heartbeat statistics for the RT and its parent AP.
+
+        Args:
+            success (bool): Whether the heartbeat was successful.
+        """
+        self.heartbeat_state.children.record(success)
+        if self.parent:
+            self.parent.record_child_hb(success)
+
+    async def on_heartbeat_stats_req(self, req: HeartbeatStatsReq) -> HeartbeatStatsRsp:
+        """
+        Handle a request for the node's heartbeat statistics.
+
+        Returns:
+            APHeartbeatStatsRsp: The current heartbeat statistics of the AP.
+        """
+
+        result = self.heartbeat_state
+        if req.reset:
+            self.heartbeat_state = HeartbeatStatsRsp(address=self.address)
+        return result
 
 
 #######################################################################################################################

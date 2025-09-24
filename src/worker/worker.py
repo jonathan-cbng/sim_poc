@@ -24,12 +24,13 @@ import argparse
 import asyncio
 import logging
 
+import httpx
 import shortuuid
 
 from src.config import settings
 from src.worker.ap import AP
 from src.worker.comms import WorkerComms
-from src.worker.node import nodes
+from src.worker.node import Node, nodes
 from src.worker.rt import RT
 from src.worker.worker_api import Address, APRegisterReq, HubConnectInd, Message, MessageTypes, RTRegisterReq
 
@@ -47,7 +48,7 @@ logging.basicConfig(
 #######################################################################################################################
 
 
-class Worker:
+class Worker(Node):
     """Top level worker class that simulates a network hub.
 
     An arbitrary number of APs and RTs can be created within the hub, but for practical
@@ -65,7 +66,10 @@ class Worker:
             address (Address): The address of the hub.
             comms (WorkerComms): Communication link to the controller.
         """
-        self.address = address
+        http_client = httpx.AsyncClient(
+            timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
+        )
+        super().__init__(address, comms, http_client)
         self.auid = str(shortuuid.uuid())
         self.comms = comms
 
@@ -79,7 +83,7 @@ class Worker:
         Returns:
             Message: The response message from the AP.
         """
-        ap = AP(command.address, self.comms)
+        ap = AP(command.address, self.comms, self.http_client)
         return await ap.on_register_req(command)
 
     async def rt_register_req(self, command: RTRegisterReq) -> Message | None:
@@ -93,7 +97,7 @@ class Worker:
             Message: The response message from the AP.
         """
 
-        rt = RT(command.address, self.comms)
+        rt = RT(command.address, self.comms, self.http_client)
         return await rt.on_rt_register_req(command)
 
     async def execute_command(self, command: Message) -> None:
@@ -148,6 +152,10 @@ class Worker:
                 logging.error(f"[AP Worker {self.address.tag}] Error receiving command: {e}")
                 await asyncio.sleep(1)
 
+    async def close(self):
+        """Clean up resources before closing the worker."""
+        await self.http_client.aclose()
+
 
 def main() -> None:
     """Entry point for the worker script."""
@@ -160,7 +168,12 @@ def main() -> None:
     address = Address(net=args.network_idx, hub=args.hub_idx)
     comms = WorkerComms(address, args.pull_addr, args.pub_addr)
     worker = Worker(address, comms)
-    asyncio.run(worker.downlink_loop())
+    try:
+        asyncio.run(worker.downlink_loop())
+    except KeyboardInterrupt:
+        logging.info("Worker stopped by user")
+    finally:
+        asyncio.run(worker.close())
 
 
 if __name__ == "__main__":

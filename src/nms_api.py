@@ -196,6 +196,7 @@ class NmsRTCreateRequest(NmsCommonCreateRequest):
     node_priority: str = "Gold"
     height_mast_m: int = 20
     height_asl_m: int = 21
+    # network_details: dict = Field(default_factory=lambda: {"rt_wwan_1_ipv6_address": None})
     network_details: dict = Field(default_factory=lambda: {"rt_wwan_1_ipv6_address": None})
     lat_deg: float  # Needs to be <20km from hub (AP inherits from hub)
     lon_deg: float  # Needs to be <20km from hub (AP inherits from hub)

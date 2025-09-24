@@ -12,15 +12,15 @@ Usage:
     Used internally by the worker process to manage AP lifecycle and registration.
 """
 
-import asyncio
 
 #######################################################################################################################
 # Imports
 #######################################################################################################################
+
+import asyncio
 import logging
 from random import random
 
-import httpx
 import shortuuid
 
 from src.config import settings
@@ -34,7 +34,7 @@ from src.nms_api import (
 from src.worker.comms import WorkerComms
 from src.worker.node import Node
 from src.worker.utils import fix_execution_time
-from src.worker.worker_api import APHeartbeatStatsRsp, APRegisterReq, APRegisterRsp, HeartbeatStatsReq
+from src.worker.worker_api import APRegisterReq, APRegisterRsp
 
 #######################################################################################################################
 # Globals
@@ -56,7 +56,7 @@ class AP(Node):
         comms (WorkerComms): Communication link to the controller.
     """
 
-    def __init__(self, address, comms: WorkerComms):
+    def __init__(self, address, http_client, comms: WorkerComms):
         """
         Initialize an AP instance.
 
@@ -64,7 +64,7 @@ class AP(Node):
             address: The address of the AP node.
             comms (WorkerComms): Communication link to the controller.
         """
-        super().__init__(address, comms)
+        super().__init__(address, http_client, comms)
         self.hub_auid = None
         self.heartbeat_secs = None
         self.auid = None
@@ -72,7 +72,6 @@ class AP(Node):
         self.ap_secret = None
         self.lon_deg = self.lat_deg = None
         self.heartbeat_task = None
-        self.heartbeat_state = APHeartbeatStatsRsp()
 
     async def heartbeat(self):
         """
@@ -82,19 +81,16 @@ class AP(Node):
         while True:
             async with fix_execution_time(self.heartbeat_secs, f"AP {self.address.tag}", logging):
                 logging.debug(f"AP {self.address.tag}: {self.heartbeat_secs}s heartbeat")
-                self.heartbeat_state.total += 1
                 try:
-                    async with httpx.AsyncClient(
-                        timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
-                    ) as client:
-                        secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
-                        res = await client.post(
-                            f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump()
-                        )
-                        res.raise_for_status()
-                        self.heartbeat_state.heartbeat_success_count += 1
+                    secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
+                    res = await self.http_client.post(
+                        f"{settings.SBAPI_URL}/ap/heartbeat", json={}, headers=secret_headers.model_dump()
+                    )
+                    res.raise_for_status()
+                    self.record_hb(True)
                 except Exception:
                     logging.warning(f"AP {self.address.tag}: Heartbeat failed")
+                    self.record_hb(False)
 
     async def on_start_heartbeat_req(self):
         """
@@ -131,70 +127,53 @@ class AP(Node):
 
         temp_auid = f"T-{self.auid}"
         try:
-            async with httpx.AsyncClient(
-                timeout=settings.HTTPX_TIMEOUT, verify=settings.VERIFY_SSL_CERT, follow_redirects=True
-            ) as client:
-                # Step 1: Create AP in NBAPI
-                # Compose AP creation payload using Pydantic model
-                ap_payload = NmsAPCreateRequest(
-                    auid=temp_auid,
-                    id=f"ID_{self.auid}",
-                    name=f"NAME_{self.auid}",
-                    parent_auid=self.hub_auid,
-                    azimuth_deg=self.azimuth_deg,
-                )
+            # Step 1: Create AP in NBAPI
+            ap_payload = NmsAPCreateRequest(
+                auid=temp_auid,
+                id=f"ID_{self.auid}",
+                name=f"NAME_{self.auid}",
+                parent_auid=self.hub_auid,
+                azimuth_deg=self.azimuth_deg,
+            )
+            res = await self.http_client.post(
+                f"{settings.NBAPI_URL}/api/v1/node/ap/{temp_auid}",
+                json=ap_payload.model_dump(),
+                headers=NmsAuthInfo().auth_header(),
+            )
+            res.raise_for_status()
+            ap_data = res.json()
+            self.lat_deg = ap_data["lat_deg"]
+            self.lon_deg = ap_data["lon_deg"]
 
-                res = await client.post(
-                    f"{settings.NBAPI_URL}/api/v1/node/ap/{temp_auid}",
-                    json=ap_payload.model_dump(),
-                    headers=NmsAuthInfo().auth_header(),
-                )
-                res.raise_for_status()
-                ap_data = res.json()
-                self.lat_deg = ap_data["lat_deg"]
-                self.lon_deg = ap_data["lon_deg"]
+            # Step 2: Register AP secret in SBAPI using Pydantic headers
+            secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
+            res = await self.http_client.post(
+                f"{settings.SBAPI_URL}/ap/register_secret/", json={}, headers=secret_headers.model_dump()
+            )
+            res.raise_for_status()
 
-                # Step 2: Register AP secret in SBAPI using Pydantic headers
-                secret_headers = NmsRegisterAPSecretHeaders(gnodebid=self.auid, secret=self.ap_secret)
-                res = await client.post(
-                    f"{settings.SBAPI_URL}/ap/register_secret/", json={}, headers=secret_headers.model_dump()
-                )
-                res.raise_for_status()
+            # Step 3: Register AP as candidate in SBAPI using Pydantic models
+            candidate_payload = NmsRegisterAPCandidateRequest(
+                csi=settings.CSI,
+                installer_key=settings.INSTALLER_KEY,
+                chosen_auid=temp_auid,
+            )
+            candidate_headers = NmsRegisterAPCandidateHeaders(gnodebid=self.auid, secret=self.ap_secret)
+            res = await self.http_client.post(
+                f"{settings.SBAPI_URL}/ap/register_candidate",
+                json=candidate_payload.model_dump(),
+                headers=candidate_headers.model_dump(),
+            )
+            res.raise_for_status()
 
-                # Step 3: Register AP as candidate in SBAPI using Pydantic models
-                candidate_payload = NmsRegisterAPCandidateRequest(
-                    csi=settings.CSI,
-                    installer_key=settings.INSTALLER_KEY,
-                    chosen_auid=temp_auid,
-                )
-                candidate_headers = NmsRegisterAPCandidateHeaders(gnodebid=self.auid, secret=self.ap_secret)
-                res = await client.post(
-                    f"{settings.SBAPI_URL}/ap/register_candidate",
-                    json=candidate_payload.model_dump(),
-                    headers=candidate_headers.model_dump(),
-                )
-                res.raise_for_status()
-
-                logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
-                response = APRegisterRsp(success=True, address=self.address)
+            logging.info(f"{self.address.tag}: AP registration successful (AUID: {self.auid})")
+            response = APRegisterRsp(success=True, address=self.address)
 
         except Exception as e:
             logging.error(f"Exception during AP registration: {e}")
             response = APRegisterRsp(success=False, address=self.address)
 
         return response
-
-    async def on_heartbeat_stats_req(self, req: HeartbeatStatsReq) -> APHeartbeatStatsRsp:
-        """
-        Handle a request for the AP's heartbeat statistics.
-
-        Returns:
-            APHeartbeatStatsRsp: The current heartbeat statistics of the AP.
-        """
-        result = self.heartbeat_state
-        if req.reset:
-            self.heartbeat_state = APHeartbeatStatsRsp()
-        return result
 
 
 #######################################################################################################################

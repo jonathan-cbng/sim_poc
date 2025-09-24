@@ -111,6 +111,22 @@ class Address(BaseModel):
         return self._tag
 
     @property
+    def parent(self) -> "Address":
+        """
+        Returns the parent address in the hierarchy.
+
+        Returns:
+            Address: The parent Address instance, or None if this is a network-level address.
+        """
+        if self.rt is not None:
+            return Address(net=self.net, hub=self.hub, ap=self.ap)
+        if self.ap is not None:
+            return Address(net=self.net, hub=self.hub)
+        if self.hub is not None:
+            return Address(net=self.net)
+        return None
+
+    @property
     def ipv6_address(self) -> str:
         """
         A precomputed IPv6 address for this node based on its address components and the configured IPv6 prefix.
@@ -244,22 +260,26 @@ class HeartbeatStatsReq(BaseMessageBody):
     reset: bool = Field(default=False, description="Reset stats after reporting")
 
 
-class RTHeartbeatStatsRsp(BaseMessageBody):
+class HeartbeatStats(BaseModel):
     """
-    Message containing heartbeat statistics.
-
-    Attributes:
-        msg_type (Literal['heartbeat_stats']): Discriminator for this message type.
-        total (int): Total number of heartbeats sent.
-        success (int): Number of successful heartbeats.
+    Heartbeat statistics.
     """
 
-    msg_type: Literal[MessageTypes.RT_HEARTBEAT_STATS_RSP] = MessageTypes.RT_HEARTBEAT_STATS_RSP
     total: int = Field(default=0, description="Total number of heartbeats sent")
     success: int = Field(default=0, description="Number of successful heartbeats")
 
+    def record(self, success: bool):
+        """
+        Update the heartbeat statistics with a new heartbeat result.
 
-class APHeartbeatStatsRsp(BaseMessageBody):
+        Args:
+            success (bool): Whether the heartbeat was successful.
+        """
+        self.total += 1
+        self.success += success
+
+
+class HeartbeatStatsRsp(BaseMessageBody):
     """
     Message containing heartbeat statistics.
 
@@ -270,11 +290,8 @@ class APHeartbeatStatsRsp(BaseMessageBody):
     """
 
     msg_type: Literal[MessageTypes.AP_HEARTBEAT_STATS_RSP] = MessageTypes.AP_HEARTBEAT_STATS_RSP
-    total: int = Field(default=0, description="Total number of heartbeats sent")
-    success: int = Field(default=0, description="Number of successful heartbeats")
-
-    child_total: int = Field(default=0, description="RT children total number of heartbeats sent")
-    child_success: int = Field(default=0, description="RT children number of successful heartbeats")
+    local: HeartbeatStats = Field(default_factory=HeartbeatStats, description="Node statss")
+    children: HeartbeatStats = Field(default_factory=HeartbeatStats, description="Summmary stats of all children")
 
 
 class Message(
@@ -286,8 +303,7 @@ class Message(
         | RTRegisterRsp
         | StartHeartbeatReq
         | HeartbeatStatsReq
-        | RTHeartbeatStatsRsp
-        | APHeartbeatStatsRsp
+        | HeartbeatStatsRsp
     ]
 ):
     """
