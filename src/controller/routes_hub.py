@@ -8,8 +8,8 @@ Hub Management API routes.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Path
-from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from fastapi import APIRouter, Body, Path
+from starlette.status import HTTP_201_CREATED
 
 from src.controller.ctrl_api import HubCreateRequest, HubRead, Result
 from src.controller.worker_ctrl import simulator
@@ -78,12 +78,7 @@ async def get_hub(
     Returns:
         HubManager: The HubManager instance.
     """
-    network = simulator.get_network(network_idx)
-    hub = network.get_hub(idx)
-    if not hub:
-        logging.warning(f"Hub {idx} not found in network {network_idx}")
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Hub not found")
-    return hub
+    return simulator.get_network(network_idx).get_hub(idx)
 
 
 @hub_router.delete("/{idx}")

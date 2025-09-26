@@ -106,15 +106,15 @@ class Hub(Node):
         rt = RT(command.address, self.comms, self.http_client)
         return await rt.on_rt_register_req(command)
 
-    async def execute_command(self, command: Message) -> None:
+    async def execute_command(self, command) -> None:
         """Execute a command received from the controller.
 
         Uses Pydantic message classes for decoding/encoding.
 
         Args:
-            command (Message): The message received from the controller.
+            command: The decoded message received from the controller.
         """
-        cmd = command.root
+        cmd = command
         logging.debug(f"Rx ctrl->{self.address.tag}: {cmd!r}")
         obj: Hub | RT | AP = nodes.get(cmd.address, self)
         result = None

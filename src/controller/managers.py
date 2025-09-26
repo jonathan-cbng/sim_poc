@@ -236,8 +236,6 @@ class APManager(ParentNode):
         else:
             logging.error(f"AP {self.address.tag} registration failed.")
 
-        self._registered_event.set()
-
     async def register(self):
         """
         Wait until the AP is registered or registration failed.
@@ -252,8 +250,6 @@ class APManager(ParentNode):
             auid=self.auid,
         )
         worker_ctrl.send(ap_req)
-
-        await self._registered_event.wait()
 
     def start_heartbeats(self, recursive: bool = False):
         """

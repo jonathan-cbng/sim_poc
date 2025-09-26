@@ -89,7 +89,7 @@ class WorkerComms:
         data = None
         try:
             json_part = message.split(" ", 1)[1]
-            data = Message.model_validate_json(json_part)
+            data = Message.model_validate_json(json_part).root
         except Exception as e:
             logging.error(f"[AP Worker {self.address.tag}] Error decoding message: {e} in message: {message}")
         return data

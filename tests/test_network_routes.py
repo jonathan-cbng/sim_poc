@@ -24,77 +24,77 @@ from src.controller.ctrl_api import NetworkRead, NetworkState
 #######################################################################################################################
 
 
-def test_list_networks(test_client, httpx_mock):
+def test_list_networks(client, httpx_mock):
     """Test: List all networks.
 
     Args:
         test_client: The test client fixture for making HTTP requests.
         httpx_mock: The HTTPX mock fixture for mocking external requests.
     """
-    create_empty_net(test_client, httpx_mock)
-    create_empty_net(test_client, httpx_mock)
-    resp = test_client.get("/network/")
+    create_empty_net(client, httpx_mock)
+    create_empty_net(client, httpx_mock)
+    resp = client.get("/network/")
     assert resp.status_code == HTTP_200_OK
     networks = resp.json()
     assert len(networks) == 2  # noqa: PLR2004
 
 
-def test_get_network(test_client, httpx_mock):
+def test_get_network(client, httpx_mock):
     """Test: Get a single network.
 
     Args:
         test_client: The test client fixture for making HTTP requests.
         httpx_mock: The HTTPX mock fixture for mocking external requests.
     """
-    net_address = create_empty_net(test_client, httpx_mock)
-    resp = test_client.get(f"/network/{net_address.net}")
+    net_address = create_empty_net(client, httpx_mock)
+    resp = client.get(f"/network/{net_address.net}")
     assert resp.status_code == HTTP_200_OK, resp.json()
     result = NetworkRead.model_validate(resp.json())
     assert result.state == NetworkState.REGISTERED
 
 
-def test_get_nonexistent_network(test_client):
+def test_get_nonexistent_network(client):
     """Test: Get a non-existent network.
 
     Args:
         test_client: The test client fixture for making HTTP requests.
     """
-    resp = test_client.get("/network/9999")
+    resp = client.get("/network/9999")
     assert resp.status_code == HTTP_404_NOT_FOUND, resp.json()
     data = resp.json()
     assert "not found" in data["detail"].lower()
 
 
-def test_delete_network(test_client, httpx_mock):
+def test_delete_network(client, httpx_mock):
     """Test: Delete a network.
 
     Args:
         test_client: The test client fixture for making HTTP requests.
         httpx_mock: The HTTPX mock fixture for mocking external requests.
     """
-    net_address = create_empty_net(test_client, httpx_mock)
-    resp = test_client.delete(f"/network/{net_address.net}")
+    net_address = create_empty_net(client, httpx_mock)
+    resp = client.delete(f"/network/{net_address.net}")
     assert resp.status_code == HTTP_200_OK, resp.json()
-    resp = test_client.get(f"/network/{net_address.net}")
+    resp = client.get(f"/network/{net_address.net}")
     assert resp.status_code == HTTP_404_NOT_FOUND, resp.json()
     data = resp.json()
     assert "not found" in data["detail"].lower()
 
 
-def test_delete_nonexistent_network(test_client):
+def test_delete_nonexistent_network(client):
     """Test: Delete a non-existent network.
 
     Args:
         test_client: The test client fixture for making HTTP requests.
     """
-    resp = test_client.delete("/network/9999")
+    resp = client.delete("/network/9999")
     assert resp.status_code == HTTP_404_NOT_FOUND, resp.json()
     data = resp.json()
     assert "not found" in data["detail"].lower()
 
 
 @pytest.mark.skip(reason="Not implemented yet")
-def test_delete_network_removes_children(test_client):
+def test_delete_network_removes_children(client):
     """Test: Deleting a network removes its APs. Not implemented yet.
 
     Args:
@@ -105,7 +105,7 @@ def test_delete_network_removes_children(test_client):
 
 
 @pytest.mark.skip(reason="Not implemented yet")
-def test_create_network_with_aps_rts(test_client):
+def test_create_network_with_aps_rts(client):
     """Test: Create a network with APs and RTs. Not implemented yet.
 
     Args:
