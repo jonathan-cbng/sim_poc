@@ -101,14 +101,13 @@ def test_delete_nonexistent_hub(test_client, httpx_mock, mock_worker) -> None:
 
 
 async def test_list_hubs(test_client, httpx_mock, mock_worker) -> None:
-    """Test listing multiple hubs (not implemented).
+    """Test listing multiple hubs.
 
     Args:
         test_client: The test client fixture.
         httpx_mock: The HTTPX mock fixture.
         mock_worker: The mock worker fixture.
     """
-    # TODO: Create multiple hubs and verify they are all listed
     await create_empty_hub(test_client, httpx_mock, mock_worker)
 
     httpx_mock.add_response(method="POST", url=f"{settings.NBAPI_URL}/api/v1/node/hub/{TEST_NETWORK_CSNI}_N00H01")
