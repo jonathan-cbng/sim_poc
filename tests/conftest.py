@@ -16,7 +16,6 @@ from collections.abc import Callable
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
 
 from src.config import settings
 from src.controller.app import get_app
@@ -67,20 +66,6 @@ def client(test_app: FastAPI) -> TestClient:
     """
     with TestClient(test_app) as client:
         yield client
-
-
-@pytest.fixture
-async def client_async(test_app: FastAPI) -> AsyncClient:
-    """
-    Fixture to provide an asynchronous HTTP client for the FastAPI app.
-    Args:
-        test_app (FastAPI): The FastAPI application instance.
-    Returns:
-        AsyncClient: The asynchronous HTTP client for making requests to the app.
-    """
-    transport = ASGITransport(app=test_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
 
 
 @pytest.fixture

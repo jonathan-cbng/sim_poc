@@ -10,12 +10,25 @@ Type hints are used where possible. See project template for conventions.
 # Imports
 #######################################################################################################################
 
-from starlette.status import HTTP_201_CREATED
+import asyncio
+import logging
+
+from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED
 
 from src.config import settings
-from src.controller.ctrl_api import HubCreateRequest, HubRead, HubState, NetworkCreateRequest, NetworkRead
+from src.controller.ctrl_api import (
+    APCreateRequest,
+    APRead,
+    APState,
+    HubCreateRequest,
+    HubRead,
+    HubState,
+    NetworkCreateRequest,
+    NetworkRead,
+)
+from src.controller.managers import APManager
 from src.controller.worker_ctrl import simulator
-from src.worker.worker_api import Address, HubConnectInd
+from src.worker.worker_api import Address, APRegisterRsp, HubConnectInd, MessageTypes
 
 #######################################################################################################################
 # Globals
@@ -108,6 +121,49 @@ async def create_empty_hub(test_client, httpx_mock, mock_worker) -> Address:
     assert hub_mgr.state == HubState.REGISTERED
 
     return hub_info.address
+
+
+async def create_empty_ap(client, httpx_mock, get_worker_mock, hub_address) -> Address:
+    """Utility function to create an AP with no RTs under a hub (creates hub if not provided).
+
+    Args:
+        client: The test client fixture for making HTTP requests.
+        httpx_mock: The HTTPX mock fixture for mocking external requests.
+        get_worker_mock: The mock worker fixture for simulating worker behavior.
+        hub_address: Optionally, the address of an existing hub. If None, creates an empty hub.
+
+    Returns:
+        Tuple: (ap_address, ap_manager, mock_worker)
+    """
+
+    mock_worker = get_worker_mock(hub_address)
+
+    resp = client.post(
+        f"/network/{hub_address.net}/hub/{hub_address.hub}/ap/",
+        json=APCreateRequest(num_rts=0).model_dump(),
+    )
+
+    assert resp.status_code == HTTP_202_ACCEPTED, resp.json()
+
+    ap_resp = APRead.model_validate(resp.json())
+    ap_addr = ap_resp.address
+    ap = simulator.get_node(ap_addr)
+    assert isinstance(ap, APManager)
+
+    # We expect the controller to have sent a register request to the worker
+    msg = await mock_worker.recv_msg()
+    assert msg.msg_type == MessageTypes.AP_REGISTER_REQ
+    assert msg.address == ap_addr
+    resp_msg = APRegisterRsp(success=True, address=ap_addr, registered_at="")
+    await mock_worker.send_msg(resp_msg)
+
+    # Spin-wait for AP to become REGISTERED - test will timeout if it doesn't
+    async with asyncio.timeout(1):  # 5 seconds timeout
+        while ap.state != APState.REGISTERED:
+            logging.info("Waiting for AP state to become REGISTERED")
+            await asyncio.sleep(0.01)
+
+    return ap_addr
 
 
 #######################################################################################################################
