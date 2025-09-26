@@ -38,7 +38,7 @@ class ControllerComms:
     """
 
     def __init__(self):
-        self.zmq_ctx = zmq.asyncio.Context()
+        self.zmq_ctx = self.zmq_pub = self.zmq_pull = None
 
     async def get_message(self) -> Message | None:
         """
@@ -81,6 +81,7 @@ class ControllerComms:
             pub_port (int): Port number for the PUB socket
             pull_port (int): Port number for the PULL socket
         """
+        self.zmq_ctx = zmq.asyncio.Context()
         self.zmq_pub = self.zmq_ctx.socket(zmq.PUB)
         self.zmq_pub.bind(f"tcp://*:{pub_port}")
         self.zmq_pull = self.zmq_ctx.socket(zmq.PULL)
@@ -96,15 +97,17 @@ class ControllerComms:
         Args:
             app: FastAPI application instance
         """
-        if hasattr(self, "zmq_pub") and self.zmq_pub:
+        if self.zmq_pub:
             self.zmq_pub.close()
-        if hasattr(self, "zmq_pull") and self.zmq_pull:
+            app.state.zmq_pub = self.zmq_pub = None
+
+        if self.zmq_pull:
             self.zmq_pull.close()
-        if hasattr(self, "zmq_ctx") and self.zmq_ctx:
+            app.state.zmq_pull = self.zmq_pull = None
+
+        if self.zmq_ctx:
             self.zmq_ctx.term()
-        app.state.zmq_ctx = None
-        app.state.zmq_pub = None
-        app.state.zmq_pull = None
+            app.state.zmq_ctx = self.zmq_ctx = None
 
 
 worker_ctrl = ControllerComms()

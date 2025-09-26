@@ -1,7 +1,10 @@
 -r requirements.txt
--r nodes/requirements-dev.txt
+-r accel/requirements-dev.txt
 pre-commit~=4.2.0
 progressbar2~=4.5.0
 pytest~=8.4.1
+pytest-asyncio
+pytest-httpx
+pytest-xdist
 ruff~=0.12.5
 coverage~=7.10.5

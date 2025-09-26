@@ -67,14 +67,14 @@ class HubCreateRequest(BaseModel):
 
     Args:
         num_aps (int): Number of APs to create under this Hub.
+        ap_heartbeat_seconds (int): Heartbeat interval for Hub.
         num_rts_per_ap (int): Number of RTs per AP.
-        heartbeat_seconds (int): Heartbeat interval for Hub.
         rt_heartbeat_seconds (int): Heartbeat interval for child RTs.
     """
 
     num_aps: int = settings.DEFAULT_APS_PER_HUB
+    ap_heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
     num_rts_per_ap: int = settings.DEFAULT_RTS_PER_AP
-    heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
     rt_heartbeat_seconds: int = settings.DEFAULT_HEARTBEAT_SECONDS
 
 

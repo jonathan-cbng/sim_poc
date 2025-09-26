@@ -71,7 +71,7 @@ class SimulatorManager(ParentNode):
                 req=HubCreateRequest(
                     num_aps=req.aps_per_hub,
                     num_rts_per_ap=req.rts_per_ap,
-                    heartbeat_seconds=req.ap_heartbeat_seconds,
+                    ap_heartbeat_seconds=req.ap_heartbeat_seconds,
                     rt_heartbeat_seconds=req.rt_heartbeat_seconds,
                 )
             )

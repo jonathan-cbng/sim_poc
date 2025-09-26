@@ -101,7 +101,7 @@ class ParentNode(BaseModel):
             HTTPException: If child not found.
         """
         try:
-            logging.info(f"{self.__class__.__name__}:{self.index}: Removing child {index}")
+            logging.info(f"{self.__class__.__name__}:{self.address}: Removing child {index}")
             del self.children[index]
         except KeyError as err:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Child not found") from err
@@ -434,7 +434,7 @@ class NetworkManager(ParentNode):
             hub_mgr.add_ap(
                 APCreateRequest(
                     num_rts=req.num_rts_per_ap,
-                    heartbeat_seconds=req.heartbeat_seconds,
+                    heartbeat_seconds=req.ap_heartbeat_seconds,
                     rt_heartbeat_seconds=req.rt_heartbeat_seconds,
                     azimuth_deg=round(i * (360.0 / req.num_aps)),
                 ),
