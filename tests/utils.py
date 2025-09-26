@@ -5,6 +5,7 @@ All code conforms to PEP 8 best practices (except line length <= 120 chars).
 Type hints are used where possible. See project template for conventions.
 """
 
+
 #######################################################################################################################
 # Imports
 #######################################################################################################################
@@ -12,7 +13,7 @@ Type hints are used where possible. See project template for conventions.
 from starlette.status import HTTP_201_CREATED
 
 from src.config import settings
-from src.controller.ctrl_api import HubCreateRequest, NetworkCreateRequest, NetworkRead
+from src.controller.ctrl_api import HubCreateRequest, HubRead, HubState, NetworkCreateRequest, NetworkRead
 from src.controller.worker_ctrl import simulator
 from src.worker.worker_api import Address, HubConnectInd
 
@@ -80,7 +81,7 @@ async def create_empty_hub(test_client, httpx_mock, mock_worker) -> Address:
         httpx_mock is function-scoped and does not require manual release. Responses are cleared at the end for safety.
     """
     # Now mock the hub registration calls
-    empty_net = await create_empty_net(test_client, httpx_mock)
+    empty_net = create_empty_net(test_client, httpx_mock)
 
     httpx_mock.add_response(method="POST", url=f"{settings.NBAPI_URL}/api/v1/node/hub/{TEST_NETWORK_CSNI}_N00H00")
 
@@ -91,19 +92,22 @@ async def create_empty_hub(test_client, httpx_mock, mock_worker) -> Address:
         rt_heartbeat_seconds=30,
     )
     # Now we can create the network.
-    resp = test_client.post("/network/", json=req.model_dump())
-
-    # Each hub needs to connect to the controller before we create the network
-    msg = HubConnectInd(address=Address(net=empty_net.net, hub=0))
-    worker = mock_worker(Address(net=empty_net.net, hub=0))
-    await worker.send_msg(msg)
-    await simulator.children[0].children[0].children[0]._connected_event.wait()
-    resp = test_client.post(f"/network/{empty_net.net}/hub", json=req.model_dump())
-
+    resp = test_client.post(f"/network/{empty_net.net}/hub/", json=req.model_dump())
+    resp.raise_for_status()
     assert resp.status_code == HTTP_201_CREATED
-    result = NetworkRead.model_validate_json(resp.json())
+    hub_info = HubRead.model_validate(resp.json())
+    hub_address = hub_info.address
+    hub_mgr = simulator.get_network(hub_address.net).get_hub(hub_address.hub)
+    # Each hub needs to connect to the controller before we create the network
+    worker = mock_worker(hub_info.address)
 
-    return result.address
+    # Send the connect indication and wait for the hub to be marked as connected. This confirms that the mocked
+    # worker is working and the hub is fully created.
+
+    await worker.send_msg(HubConnectInd(address=hub_address))
+    assert hub_mgr.state == HubState.REGISTERED
+
+    return hub_info.address
 
 
 #######################################################################################################################

@@ -451,7 +451,7 @@ class NetworkManager(ParentNode):
         Args:
             index (int): Hub index.
         """
-        logging.info(f"Removing Hub {index} from Network {self.index}")
+        logging.info(f"Removing Hub {index} from Network {self.address}")
         self.remove_child(index)
 
     def get_hub(self, index: int) -> HubManager:

@@ -162,6 +162,22 @@ class NetworkRead(BaseModel):
     state: NetworkState = Field(..., description="Current state of the network")
 
 
+class HubRead(BaseModel):
+    """
+    Response model for reading a Hub.
+
+    Args:
+        index (int): Hub index.
+        address (Address): Address of the Hub.
+        state (HubState): Current state of the Hub.
+        num_aps (int): Number of APs under this Hub.
+    """
+
+    address: Address = Field(..., description="Hub address")
+    state: HubState = Field(..., description="Current state of the Hub")
+    auid_prefix: str = Field(default="", description="Prefix for child AP AUIDs")
+
+
 #######################################################################################################################
 # End of file
 #######################################################################################################################

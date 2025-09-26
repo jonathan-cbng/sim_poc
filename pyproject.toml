@@ -25,3 +25,6 @@
 [tool.ruff.lint.isort]
     known-first-party = ["cbng"] # cbng packages should be grouped together
     known-local-folder = ["core", "src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

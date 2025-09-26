@@ -11,10 +11,8 @@ from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Path
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
-from src.controller.ctrl_api import HubCreateRequest, Result
-from src.controller.managers import HubManager
+from src.controller.ctrl_api import HubCreateRequest, HubRead, Result
 from src.controller.worker_ctrl import simulator
-from src.worker.worker_api import Address
 
 #######################################################################################################################
 # Globals
@@ -30,7 +28,7 @@ hub_router = APIRouter(prefix="/network/{network_idx}/hub", tags=["Hub Managemen
 async def create_hub(
     network_idx: Annotated[int, Path(description="Network index")],
     req: Annotated[HubCreateRequest, Body(description="Hub creation request")],
-) -> Address:
+) -> HubRead:
     """
     Create and start a Hub (optionally with initial APs and RTs).
 
@@ -44,13 +42,13 @@ async def create_hub(
     network = simulator.get_network(network_idx)
     hub = await network.add_hub(req)
     logging.info(f"Created Hub {hub.address}")
-    return hub.address
+    return hub
 
 
 @hub_router.get("/")
 async def list_hubs(
     network_idx: Annotated[int, Path(description="Network index")],
-) -> dict[int, HubManager]:
+) -> dict[int, HubRead]:
     """
     List all Hubs in a network.
 
@@ -69,7 +67,7 @@ async def list_hubs(
 async def get_hub(
     network_idx: Annotated[int, Path(description="Network index")],
     idx: Annotated[int, Path(description="Hub index")],
-) -> HubManager:
+) -> HubRead:
     """
     Get status for a single Hub.
 
