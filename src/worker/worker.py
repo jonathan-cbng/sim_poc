@@ -181,14 +181,14 @@ def main() -> None:
     parser.add_argument("pull_addr", type=str)
     args = parser.parse_args()
     address = Address(net=args.network_idx, hub=args.hub_idx)
-    comms = WorkerComms(address, args.pull_addr, args.pub_addr)
-    worker = Hub(address, comms)
-    try:
-        asyncio.run(worker.downlink_loop())
-    except KeyboardInterrupt:
-        logging.info("Worker stopped by user")
-    finally:
-        asyncio.run(worker.close())
+    with WorkerComms(address, args.pull_addr, args.pub_addr) as comms:
+        worker = Hub(address, comms)
+        try:
+            asyncio.run(worker.downlink_loop())
+        except KeyboardInterrupt:
+            logging.info("Worker stopped by user")
+        finally:
+            asyncio.run(worker.close())
 
 
 if __name__ == "__main__":

@@ -64,6 +64,14 @@ class WorkerComms:
         self.pub_sock.connect(pub_addr)
         self.pub_sock.setsockopt_string(zmq.SUBSCRIBE, self.address.tag)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.push_sock.close(linger=0)
+        self.pub_sock.close(linger=0)
+        self.ctx.term()
+
     async def send_msg(self, msg) -> None:
         """
         Send a message to the controller.
